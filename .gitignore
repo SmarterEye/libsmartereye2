@@ -34,7 +34,11 @@
 # MacOS
 .DS_Store
 
+# IDE
+.idea
+
 # Build
+cmake-build*
 build*
 bin
 
