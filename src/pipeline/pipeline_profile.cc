@@ -13,38 +13,105 @@
 // limitations under the License.
 
 #include "pipeline_profile.h"
+#include "device/device.h"
+#include "streaming/stream_profile.h"
+
+#include "pipeline/pipeline_profile.hpp"
+#include "device/device.hpp"
+#include "streaming/stream_profile.hpp"
 
 #include <utility>
-#include "device/device.h"
-#include "core/streaming.h"
 
 namespace libsmartereye2 {
 
-class PipelineProfilePrivate {
- public:
-  explicit PipelineProfilePrivate(std::shared_ptr<DeviceInterface> dev, std::string file = "")
-      : dev_(std::move(dev)), to_file_(std::move(file)) {
+PipelineProfilePrivate::PipelineProfilePrivate(const std::shared_ptr<DeviceInterface> dev, std::string file)
+    : multi_stream_(new MultiStream(dev)),
+      device_(dev),
+      to_file_(std::move(file)) {
 
+}
+
+std::shared_ptr<DeviceInterface> PipelineProfilePrivate::getDevice() {
+  // TODO: handle case where device has disconnected and reconnected
+  // TODO: remember to recreate the device as record device in case of to_file.empty() == false
+  if (!device_) {
+    throw std::runtime_error("Device is unavailable");
+  }
+  return device_;
+}
+
+StreamProfiles PipelineProfilePrivate::getActiveStreams() const {
+  StreamProfiles stream_profiles;
+
+  for (auto &&sensor : multi_stream_->getSensors()) {
+    auto active_stream = sensor->getActiveStreams();
+    stream_profiles.insert(stream_profiles.end(), active_stream.begin(), active_stream.end());
   }
 
-  std::shared_ptr<DeviceInterface> getDevice() {
-    // TODO: handle case where device has disconnected and reconnected
-    // TODO: remember to recreate the device as record device in case of to_file.empty() == false
-    if (!dev_) {
-      throw std::runtime_error("Device is unavailable");
-    }
-    return dev_;
+  return stream_profiles;
+}
+
+MultiStream::MultiStream(const std::shared_ptr<DeviceInterface> dev) {
+  for (size_t i = 0; i < dev->getSensorCount(); i++) {
+    sensors_.push_back(&dev->getSensor(i));
   }
 
-  StreamProfiles getActiveStreams() const {
-    StreamProfiles stream_profiles;
-    // TODO
-    return stream_profiles;
+  for (auto &sensor : sensors_) {
+    auto profiles = sensor->getStreamProfiles(ProfileTag::PROFILE_TAG_ANY);
+    sensor_to_profiles_[sensor] = profiles;
+    all_profiles_.insert(all_profiles_.end(), profiles.begin(), profiles.end());
   }
+}
 
- private:
-  std::shared_ptr<DeviceInterface> dev_;
-  std::string to_file_;
-};
+void MultiStream::open() {
+  for (auto &&kvp : sensor_to_profiles_) {
+    kvp.first->open(kvp.second);
+  }
+}
+
+void MultiStream::close() {
+  for (auto &&sensor : sensors_) {
+    sensor->close();
+  }
+}
+
+void MultiStream::stop() {
+  for (auto &&sensor : sensors_) {
+    sensor->stop();
+  }
+}
 
 }  // namespace libsmartereye2
+
+namespace se2 {
+
+std::vector<StreamProfile> se2::PipelineProfile::getStreams() const {
+  std::vector<StreamProfile> results;
+  auto list = pipeline_profile_->profile->getActiveStreams();
+  auto size = list.size();
+
+  for (size_t i = 0; i < size; i++) {
+    StreamProfile sp(new SeStreamProfile{list.at(i).get()});
+    results.push_back(sp);
+  }
+  return results;
+}
+
+StreamProfile PipelineProfile::getStream(FrameId frame_id, int index) const {
+  auto stream_list = getStreams();
+  for (auto &&stream : stream_list) {
+    if (stream.frameId() == frame_id
+        && (index == -1 || stream.index() == index))
+      return stream;
+  }
+  throw std::runtime_error("Profile does not contain the requested stream");
+}
+
+Device PipelineProfile::getDevice() const {
+  auto device_interface = pipeline_profile_->profile->getDevice();
+  std::shared_ptr<libsmartereye2::DeviceInfo> device_info = nullptr;
+  std::shared_ptr<SeDevice> dev(new SeDevice{device_interface->getContext(), device_info, device_interface});
+  return Device(dev);
+}
+
+}  // namespace se2

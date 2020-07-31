@@ -56,7 +56,7 @@ class ConsumerQueue {
     deq_cv_.notify_one();
   }
 
-  bool dequeue(T *item, int timeout_ms) {
+  bool dequeue(T *item, uint32_t timeout_ms) {
     std::unique_lock<std::mutex> lock(mutex_);
     accepting_ = true;
     was_flushed_ = true;

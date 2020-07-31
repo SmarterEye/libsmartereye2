@@ -16,99 +16,68 @@
 #define LIBSMARTEREYE2_PROCESSING_H
 
 #include "core/options.h"
-#include "device/sensor.h"
-#include "se_callbacks.h"
+#include "core/info.h"
+#include "core/frame_source.h"
+#include "proc/synthetic_stream.h"
+
+#include "se_callbacks.hpp"
+
+namespace libsmartereye2 {
+class ProcessingBlockInterface;
+}
+
+struct SeProcessingBlock : public SeOptions, public noncopyable {
+  explicit SeProcessingBlock(const std::shared_ptr<libsmartereye2::ProcessingBlockInterface> &block)
+      : SeOptions((libsmartereye2::OptionsInterface *) block.get()),
+        block(block) {}
+
+  std::shared_ptr<libsmartereye2::ProcessingBlockInterface> block;
+};
 
 namespace libsmartereye2 {
 
-class Frame;
-class OptionsInterface;
 class FrameInterface;
-class StreamProfileBase;
 struct FrameHolder;
-struct SeProcessingBlock;
 
-template<class T>
-class FrameProcessorCallback : public SeFrameProcessorCallback {
+class ProcessingBlockInterface : public virtual OptionsInterface, public virtual InfoInterface {
  public:
-  explicit FrameProcessorCallback(T on_frame) : on_frame_function_(on_frame) {}
-  void onFrame(FrameInterface *frame) override {}
-  void release() override {}
-
- private:
-  T on_frame_function_;
-};
-
-class SyntheticSourceInterface {
- public:
- public:
-  virtual ~SyntheticSourceInterface() = default;
-
-  virtual FrameInterface *allocateVideoFrame(std::shared_ptr<StreamProfileBase> stream,
-                                             FrameInterface *original,
-                                             int new_bpp = 0,
-                                             int new_width = 0,
-                                             int new_height = 0,
-                                             int new_stride = 0,
-                                             SeExtension frame_type = SeExtension::EXTENSION_VIDEO_FRAME) = 0;
-
-  virtual FrameInterface *allocateMotionFrame(std::shared_ptr<StreamProfileBase> stream,
-                                              FrameInterface *original,
-                                              SeExtension frame_type = SeExtension::EXTENSION_MOTION_FRAME) = 0;
-
-  virtual FrameInterface *allocateCompositeFrame(std::vector<FrameHolder> frames) = 0;
-
-  virtual FrameInterface *allocatePoints(std::shared_ptr<StreamProfileBase> stream,
-                                         FrameInterface *original,
-                                         SeExtension frame_type = SeExtension::EXTENSION_POINTS) = 0;
-
-  virtual void frameReady(FrameHolder result) = 0;
-};
-
-class ProcessingBlockInterface : public OptionsInterface {
- public:
-  virtual void set_processing_callback(FrameCallbackPtr callback) = 0;
-  virtual void set_output_callback(FrameCallbackPtr callback) = 0;
+  virtual void setProcessingCallback(FrameProcessorCallbackPtr callback) = 0;
+  virtual void setOutputCallback(FrameCallbackPtr callback) = 0;
   virtual void invoke(FrameHolder frame) = 0;
-  virtual SyntheticSourceInterface &get_source() = 0;
+  virtual SyntheticSourceInterface &getSource() = 0;
 
-  virtual ~ProcessingBlockInterface() = default;
+  ~ProcessingBlockInterface() override = default;
 };
 
-class ProcessingBlock : public Options {
+class ProcessingBlock : public ProcessingBlockInterface, public OptionsContainer, public InfoContainer {
  public:
-  using Options::supports;
+  explicit ProcessingBlock(const std::string &name);
+  ~ProcessingBlock() override { frame_source_.flush(); }
 
-  explicit ProcessingBlock(const std::shared_ptr<SeProcessingBlock> &block)
-      : Options((SeOptions *) block.get()), block_(block) {}
-
-  template<class S>
-  explicit ProcessingBlock(S processing_func) {}
-
-  explicit operator SeOptions *() const { return (SeOptions *) get(); }
-  virtual SeProcessingBlock *get() const { return block_.get(); }
-
-  template<class S>
-  void start(S on_frame) {}
-
-  template<class S>
-  S &operator>>(S &on_frame) {}
-
-  void invoke(Frame frame) const;
-  bool support(CameraInfo info) const;
-  std::string getInfo(CameraInfo info) const;
+  void setProcessingCallback(FrameProcessorCallbackPtr callback) override;
+  void setOutputCallback(FrameCallbackPtr callback) override;
+  void invoke(FrameHolder frame) override;
+  SyntheticSourceInterface &getSource() override { return source_wrapper_; }
 
  protected:
-  void registerSimpleOption(OptionKey option_key, OptionRange range);
-  std::shared_ptr<SeProcessingBlock> block_;
+  FrameSource frame_source_;
+  std::mutex mutex_;
+  FrameProcessorCallbackPtr callback_;
+  SyntheticSource source_wrapper_;
 };
 
-class AsynchronousSyncer : public ProcessingBlock {
+template<class T>
+class InternalFrameProcessorCallback : public SeFrameProcessorCallback {
+  T on_frame_function;
  public:
-  AsynchronousSyncer() : ProcessingBlock(init()) {};
+  explicit InternalFrameProcessorCallback(T on_frame) : on_frame_function(on_frame) {}
 
- private:
-  std::shared_ptr<SeProcessingBlock> init() { return nullptr; }
+  void onFrame(SeFrame *f, SeSyntheticSource *source) override {
+    FrameHolder front((FrameInterface *) f);
+    on_frame_function(std::move(front), source->source);
+  }
+
+  void release() override { delete this; }
 };
 
 }  // namespace libsmartereye2

@@ -12,29 +12,63 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "frame.h"
+#include "frame_queue.h"
 
-namespace libsmartereye2 {
+#include "core/frame_queue.hpp"
+#include "core/frame.hpp"
 
-void libsmartereye2::FrameQueue::operator()(Frame frame) {
+using namespace libsmartereye2;
+
+namespace se2 {
+
+void FrameQueue::operator()(Frame frame) {
   enqueue(std::move(frame));
 }
 
 void FrameQueue::enqueue(Frame frame) {
   if (keep_) frame.keep();
-  FrameHolder holder(frame.frame_ref_);
-  queue_->enqueue(std::move(holder));
+  FrameHolder fh(frame.frame_ref_);
+  queue_->queue.enqueue(std::move(fh));
 }
 
 Frame FrameQueue::waitForFrame(int32_t timeout_ms) const {
-  FrameHolder holder;
-  if (!queue_->dequeue(&holder, timeout_ms)) {
+  FrameHolder fh;
+  if (!queue_->queue.dequeue(&fh, timeout_ms)) {
     throw std::runtime_error("Frame did not arrive in time!");
   }
 
-  FrameInterface *result = nullptr;
-  std::swap(result, holder.frame);
-  return Frame(result);
+  FrameInterface *frame = nullptr;
+  std::swap(frame, fh.frame);
+  return Frame(frame);
 }
 
-}  // namespace libsmartereye2
+//template<typename T>
+//bool FrameQueue::pollForFrame(T *output) const {
+//  if (!std::is_base_of<Frame, T>::value) return false;
+//
+//  FrameHolder fh;
+//  if (queue_->queue.tryDequeue(&fh)) {
+//    FrameInterface *frame = nullptr;
+//    std::swap(frame, fh.frame);
+//    *output = frame;
+//  }
+//
+//  return false;
+//}
+//
+//template<typename T>
+//bool FrameQueue::tryWaitForFrame(T *output, uint32_t timeout_ms) const {
+//  if (!std::is_base_of<Frame, T>::value) return false;
+//
+//  libsmartereye2::FrameHolder fh;
+//  if (queue_->queue.dequeue(&fh, timeout_ms)) {
+//    return false;
+//  }
+//
+//  FrameInterface *frame = nullptr;
+//  std::swap(frame, fh.frame);
+//  *output = frame;
+//  return true;
+//}
+
+}  // namespace se2

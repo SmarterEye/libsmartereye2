@@ -15,20 +15,7 @@
 #ifndef LIBSMARTEREYE2_UPDATE_DEVICE_H
 #define LIBSMARTEREYE2_UPDATE_DEVICE_H
 
-#include "device.h"
-
 namespace libsmartereye2 {
-
-class UpdateDevice : public Device {
- public:
-  UpdateDevice();
-  explicit UpdateDevice(const Device& device);
-
-  void update(const std::vector<uint8_t> &fw_image) const;
-
-  template<class T>
-  void update(const std::vector<uint8_t> &fw_image, T callback) const;
-};
 
 }  // namespace libsmartereye2
 

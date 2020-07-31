@@ -17,45 +17,62 @@
 
 #include <utility>
 
+#include "core/frame_aggregator.h"
 #include "device/context.h"
-#include "se_types.h"
+#include "device/device_hub.h"
+#include "pipeline_profile.h"
+#include "concurrency/concurrency.h"
+
+namespace libsmartereye2 {
+class PipelinePrivate;
+}
+
+struct SePipeline {
+  std::shared_ptr<libsmartereye2::PipelinePrivate> pipeline;
+};
 
 namespace libsmartereye2 {
 
-class PipelineProfile;
-class PipelineConfig;
-class FrameSet;
+class PipelineConfigPrivate;
 
-class Pipeline {
+class PipelinePrivate : public std::enable_shared_from_this<PipelinePrivate> {
  public:
-  explicit Pipeline(Context context = Context()) {}
+  explicit PipelinePrivate(const std::shared_ptr<ContextPrivate>& context);
+  virtual ~PipelinePrivate();
 
-  PipelineProfile start();
-  PipelineProfile start(const PipelineConfig &config);
-
-  template<class T>
-  PipelineProfile start(T callback);
-
-  template<class T>
-  PipelineProfile start(const PipelineConfig &config, T callback);
-
+  std::shared_ptr<PipelineProfilePrivate> start(std::shared_ptr<PipelineConfigPrivate> conf,
+                                                FrameCallbackPtr callback = nullptr);
   void stop();
 
-  FrameSet waitForFrames(uint32_t timeout_ms = 15000) const;
+  std::shared_ptr<PipelineProfilePrivate> getActiveProfile() const;
+  FrameHolder waitForFrames(uint32_t timeout_ms);
+  bool pollForFrames(FrameHolder *frame_holder);
+  bool tryWaitForFrames(FrameHolder *frame_holder, uint32_t timeout_ms);
+  std::shared_ptr<DeviceInterface> waitForDevice(const std::chrono::milliseconds &timeout,
+                                                 const std::string &serial = "");
+  std::shared_ptr<ContextPrivate> getContext() const { return context_; }
 
-  bool pollForFrames(FrameSet *frame_set) const;
+ protected:
+  FrameCallbackPtr getCallback(const std::vector<int>& synced_streams_ids);
+  std::vector<int> onStart(const std::shared_ptr<PipelineProfilePrivate>& profile);
+  void unsafeStart(std::shared_ptr<PipelineConfigPrivate> conf);
+  void unsafeStop();
 
-  bool tryWaitForFrames(FrameSet *frame_set, uint32_t timeout_ms = 15000) const;
-
-  PipelineProfile getActiveProfile();
-
-  operator std::shared_ptr<PipelinePrivate>() const;
-  explicit Pipeline(std::shared_ptr<PipelinePrivate> pipeline) : pipeline_(std::move(pipeline)) {}
+  mutable std::mutex mutex_;
+  std::shared_ptr<PipelineProfilePrivate> active_profile_;
+  std::shared_ptr<PipelineConfigPrivate> prev_conf_;
+  DeviceHubPrivate hub_;
 
  private:
-  friend class PipelineConfig;
+  std::shared_ptr<PipelineProfilePrivate> unsafeGetActiveProfile() const;
 
-  std::shared_ptr<PipelinePrivate> pipeline_;
+  std::shared_ptr<ContextPrivate> context_;
+  int playback_stopped_token_ = -1;
+  Dispatcher dispatcher_;
+
+  std::unique_ptr<FrameAggregator> aggregator_;
+  std::vector<FrameId> synced_streams_;
+  FrameCallbackPtr streams_callback_;
 };
 
 }  // namespace libsmartereye2

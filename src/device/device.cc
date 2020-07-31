@@ -13,45 +13,19 @@
 // limitations under the License.
 
 #include "device.h"
-#include "se_types.h"
+
 #include "easylogging++.h"
+#include "device/device_info.h"
+#include "streaming/stream_profile.h"
+
+#include "device/device.hpp"
+#include "device/device_list.hpp"
 
 #include <map>
 #include <mutex>
 #include <utility>
 
 namespace libsmartereye2 {
-
-
-class DevicePrivate : public DeviceInterface {
- public:
-  virtual ~DevicePrivate();
-
-  SensorInterface &getSensor(size_t i) override;
-  const SensorInterface &getSensor(size_t i) const override;
-  size_t getSensorCount() const override;
-  void hardwareReset() override;
-  std::string getInfo(CameraInfo info) const override;
-  bool supportsInfo(CameraInfo info) const override;
-  std::shared_ptr<ContextPrivate> getContext() const override;
-  std::pair<int32_t, Extrinsics> getExtrinsics(const StreamProfileBase &stream) const override;
-  bool isValid() const override;
-
- protected:
-  int addSensor(const std::shared_ptr<SensorInterface> &sensor_base);
-  int assignSensor(const std::shared_ptr<SensorInterface> &sensor_base, int8_t idx);
-  void registerStreamToExtrinsicGroup(const StreamProfileBase &stream, int32_t groupd_index);
-
-  std::map<int, std::pair<int32_t, std::shared_ptr<const StreamProfileBase>>> extrinsics_;
-
- private:
-  std::vector<std::shared_ptr<SensorInterface>> sensors_;
-  std::shared_ptr<ContextPrivate> context_;
-  bool is_valid_;
-  bool device_changed_notifications_;
-  mutable std::mutex device_changed_mtx_;
-  int64_t callback_id_;
-};
 
 DevicePrivate::~DevicePrivate() {
   if (device_changed_notifications_) {
@@ -85,25 +59,20 @@ size_t DevicePrivate::getSensorCount() const {
 }
 
 void DevicePrivate::hardwareReset() {
-// TODO
-}
-
-std::string DevicePrivate::getInfo(CameraInfo info) const {
-  return ""; // TODO
-}
-
-bool DevicePrivate::supportsInfo(CameraInfo info) const {
-  return true;  // TODO
+  LOG(WARNING) << __FUNCTION__ << " is not implemented for this device!";
 }
 
 std::shared_ptr<ContextPrivate> DevicePrivate::getContext() const {
-  return
-      context_;
+  return context_;
 }
 
-std::pair<int32_t, Extrinsics> DevicePrivate::getExtrinsics(const StreamProfileBase &stream) const {
+std::pair<int32_t, Extrinsics> DevicePrivate::getExtrinsics(const StreamInterface &stream) const {
 // TODO
-  return std::pair<int32_t, Extrinsics>();
+  return {};
+}
+
+platform::BackendDeviceGroup DevicePrivate::getDeviceData() const {
+  return group_;
 }
 
 bool DevicePrivate::isValid() const {
@@ -111,29 +80,96 @@ bool DevicePrivate::isValid() const {
   return is_valid_;
 }
 
-int DevicePrivate::addSensor(const std::shared_ptr<SensorInterface> &sensor_base) { return 0; }
-int DevicePrivate::assignSensor(const std::shared_ptr<SensorInterface> &sensor_base, int8_t idx) { return 0; }
-void DevicePrivate::registerStreamToExtrinsicGroup(const StreamProfileBase &stream, int32_t groupd_index) {}
-
-Device &Device::operator=(std::shared_ptr<SeDevice> dev) {
-  device_.reset();
-  device_ = std::move(dev);
-  return *this;
+void DevicePrivate::tagProfiles(StreamProfiles profiles) const {
+  for (const auto &profile : profiles) {
+    for (auto tag : profiles_tags_) {
+      if (auto vp = dynamic_cast<VideoStreamProfilePrivate *>(profile.get())) {
+        if ((tag.frame_id == FrameId::NotUsed || vp->frameId() == tag.frame_id) &&
+            (tag.format == FrameFormat::Any || vp->format() == tag.format) &&
+            (tag.width == -1 || vp->width() == tag.width) &&
+            (tag.height == -1 || vp->height() == tag.height) &&
+            (tag.fps == -1 || vp->fps() == tag.fps) &&
+            (tag.stream_index == -1 || vp->index() == tag.stream_index))
+          profile->tagProfile(tag.tag);
+      } else if (auto mp = dynamic_cast<MotionStreamProfilePrivate *>(profile.get())) {
+        if ((tag.frame_id == FrameId::NotUsed || mp->frameId() == tag.frame_id) &&
+            (tag.format == FrameFormat::Any || mp->format() == tag.format) &&
+            (tag.fps == -1 || mp->fps() == tag.fps) &&
+            (tag.stream_index == -1 || mp->index() == tag.stream_index))
+          profile->tagProfile(tag.tag);
+      }
+    }
+  }
 }
 
-Device &Device::operator=(const Device &dev) {
-  *this = nullptr;
-  device_ = dev.device_;
-  return *this;
+int DevicePrivate::addSensor(const std::shared_ptr<SensorInterface> &sensor_base) {
+  sensors_.push_back(sensor_base);
+  return static_cast<int>(sensors_.size()) - 1;
 }
+
+int DevicePrivate::assignSensor(const std::shared_ptr<SensorInterface> &sensor_base, int8_t idx) {
+  try {
+    sensors_[idx] = sensor_base;
+    return (int) sensors_.size() - 1;
+  }
+  catch (std::out_of_range) {
+    throw std::runtime_error(toString() << "Cannot assign sensor - invalid subdevice value" << idx);
+  }
+}
+
+void DevicePrivate::registerStreamToExtrinsicGroup(const StreamProfileBase &stream, int32_t groupd_index) {
+  auto cond = [groupd_index](const std::pair<int, std::pair<uint32_t, std::shared_ptr<const StreamInterface>>> &p) {
+    return p.second.first == groupd_index;
+  };
+  auto iter = std::find_if(extrinsics_.begin(), extrinsics_.end(), cond);
+
+  if (iter == extrinsics_.end()) {
+    //First stream to register for this group
+    extrinsics_[stream.uniqueId()] = std::make_pair(groupd_index, stream.shared_from_this());
+  } else {
+    //iter->second holds the group_id and the key stream
+    extrinsics_[stream.uniqueId()] = iter->second;
+  }
+}
+
+DevicePrivate::DevicePrivate(std::shared_ptr<ContextPrivate> context,
+                             platform::BackendDeviceGroup group,
+                             bool device_changed_notifications)
+    : context_(std::move(context)),
+      group_(std::move(group)),
+      is_valid_(true),
+      device_changed_notifications_(device_changed_notifications) {
+
+//  profiles_tags_ = lazy<std::vector<tagged_profile>>([this]() { return get_profiles_tags(); });
+//
+//  if (_device_changed_notifications) {
+//    auto cb = new devices_changed_callback_internal([this](rs2_device_list *removed, rs2_device_list *added) {
+//      // Update is_valid variable when device is invalid
+//      std::lock_guard<std::mutex> lock(_device_changed_mtx);
+//      for (auto &dev_info : removed->list) {
+//        if (dev_info.info->get_device_data() == _group) {
+//          _is_valid = false;
+//          return;
+//        }
+//      }
+//    });
+//
+//    _callback_id =
+//        _context->register_internal_device_callback({cb, [](rs2_devices_changed_callback *p) { p->release(); }});
+//  }
+}
+
+}  // namespace libsmartereye2
+
+namespace se2 {
 
 std::vector<Sensor> Device::querySensors() const {
-  CHECK_PTR_NOT_NULL(device_);
   std::vector<Sensor> results;
   auto device_interface = device_->device;
 
   for (size_t i = 0; i < device_interface->getSensorCount(); i++) {
-    std::shared_ptr<SeSensor> se_sensor(new SeSensor(*device_, &device_interface->getSensor(i)));
+    libsmartereye2::SensorInterface *sensor = &device_->device->getSensor(i);
+    std::shared_ptr<SeSensor> se_sensor(new SeSensor(device_.get(), sensor));
     Sensor dev(se_sensor);
     results.push_back(dev);
   }
@@ -157,4 +193,26 @@ void Device::hardwareReset() {
   device_->device->hardwareReset();
 }
 
-}  // namespace libsmartereye2
+Device DeviceList::operator[](uint32_t index) const {
+  std::shared_ptr<SeDevice> dev(new SeDevice{
+      list_->context,
+      list_->list[index].info,
+      list_->list[index].info->createDevice()
+  });
+  return Device(dev);
+}
+
+bool DeviceList::contains(const Device &dev) const {
+  for (const auto &info : list_->list) {
+    if (dev.get()->info && dev.get()->info->getDeviceData() == info.info->getDeviceData()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+int32_t DeviceList::size() const {
+  return static_cast<int32_t>(list_->list.size());
+}
+
+}

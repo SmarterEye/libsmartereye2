@@ -14,12 +14,14 @@
 
 #include "update_device.h"
 
-namespace libsmartereye2 {
+#include "device/update_device.hpp"
+
+namespace se2 {
 
 UpdateDevice::UpdateDevice()
     : Device() {}
 
-UpdateDevice::UpdateDevice(const Device& device)
+UpdateDevice::UpdateDevice(const Device &device)
     : Device(device.get()) {
 
 }
@@ -33,4 +35,4 @@ void UpdateDevice::update(const std::vector<uint8_t> &fw_image, T callback) cons
 
 }
 
-}  // namespace libsmartereye2
+}  // namespace se2

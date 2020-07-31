@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include "filter.h"
-#include "core/frame_set.h"
-#include "core/frame_queue.h"
+
+#include "proc/filter.hpp"
+#include "core/frame_set.hpp"
 
 #include <utility>
 
-namespace libsmartereye2 {
+namespace se2 {
 
 Filter::Filter(const std::shared_ptr<SeProcessingBlock> &block, uint32_t queue_size)
     : ProcessingBlock(block), queue_(queue_size) {
@@ -33,26 +34,21 @@ Frame Filter::process(Frame frame) const {
   }
   return result_frame;
 }
+
 FrameQueue Filter::getQueue() const {
   return queue_;
 }
 
-libsmartereye2::PointCloud::PointCloud()
-    : Filter(init(), 1) {}
+PointCloud::PointCloud() : Filter(init(), 1) {}
 
-PointCloud::PointCloud(StreamType stream, int index)
+PointCloud::PointCloud(FrameId frame_id, int index)
     : Filter(init(), 1) {
-  setOption(OptionKey::STREAM_FILTER, static_cast<float>(stream));
+  setOption(OptionKey::STREAM_FILTER, static_cast<float>(frame_id));
   setOption(OptionKey::STREAM_INDEX_FILTER, static_cast<float>(index));
 }
 
 PointCloud::PointCloud(const std::shared_ptr<SeProcessingBlock> &block)
     : Filter(block, 1) {}
-
-std::shared_ptr<SeProcessingBlock> PointCloud::init() {
-  // TODO
-  return std::shared_ptr<SeProcessingBlock>();
-}
 
 Points PointCloud::calculate(Frame depth) {
   auto res = process(std::move(depth));
@@ -70,17 +66,20 @@ Points PointCloud::calculate(Frame depth) {
 }
 
 void PointCloud::mapTo(Frame mapped) {
-  setOption(OptionKey::STREAM_FILTER, float(mapped.getProfile().type()));
+  setOption(OptionKey::STREAM_FILTER, float(mapped.getProfile().frameId()));
   setOption(OptionKey::STREAM_FORMAT_FILTER, float(mapped.getProfile().format()));
   setOption(OptionKey::STREAM_INDEX_FILTER, float(mapped.getProfile().index()));
   process(std::move(mapped));
 }
 
-YuvDecoder::YuvDecoder()
-    : Filter(init(), 1) {}
+std::shared_ptr<SeProcessingBlock> PointCloud::init() {
+  // TODO
+  return std::shared_ptr<SeProcessingBlock>();
+}
 
-YuvDecoder::YuvDecoder(const std::shared_ptr<SeProcessingBlock> &block)
-    : Filter(block, 1) {}
+YuvDecoder::YuvDecoder() : Filter(init(), 1) {}
+
+YuvDecoder::YuvDecoder(const std::shared_ptr<SeProcessingBlock> &block) : Filter(block, 1) {}
 
 std::shared_ptr<SeProcessingBlock> YuvDecoder::init() {
   // TODO
@@ -127,8 +126,8 @@ DisparityTransform::DisparityTransform(Filter filter)
   // TODO
 }
 
-std::shared_ptr<SeProcessingBlock> libsmartereye2::DisparityTransform::init(bool transform_to_disparity) {
-  return nullptr;
+std::shared_ptr<SeProcessingBlock> DisparityTransform::init(bool transform_to_disparity) {
+  return std::shared_ptr<SeProcessingBlock>();
 }
 
-}  // namespace libsmartereye2
+}  // namespace se2

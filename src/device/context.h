@@ -20,63 +20,61 @@
 #include <functional>
 #include <map>
 #include <mutex>
-#include <proc/filter.h>
 
-#include "se_types.h"
-#include "se_util.h"
-#include "se_callbacks.h"
+#include "backend.h"
+#include "proc/filter.hpp"
+#include "se_callbacks.hpp"
 
 namespace libsmartereye2 {
 
-class DeviceList;
 class DeviceInfo;
 class StreamProfileBase;
+class PlaybackDeviceInfo;
 
 class ContextPrivate : public std::enable_shared_from_this<ContextPrivate> {
  public:
-  explicit ContextPrivate(const std::string &filename = "", const std::string &section = "") {}
+  explicit ContextPrivate(platform::BackendType type,
+                          const std::string &filename = "",
+                          const std::string &section = "");
   virtual ~ContextPrivate() = default;
 
-  void stop() {}
+  void stop();
   std::vector<std::shared_ptr<DeviceInfo>> queryDevices(int mask) const;
 
-  int64_t registerInternalDeviceCallback(DevicesChangedCallbackPtr cb);
+  int64_t registerInternalDeviceCallback(DevicesChangedCallbackPtr callback);
   void unregisterInternalDeviceCallback(int64_t cb_id);
-  void setDevicesChangedCallback(DevicesChangedCallbackPtr cb);
+  void setDevicesChangedCallback(DevicesChangedCallbackPtr callback);
 
-  std::vector<std::shared_ptr<DeviceInfo>> createDevices(int mask) const;
+  std::vector<std::shared_ptr<DeviceInfo>>
+  createDevices(platform::BackendDeviceGroup devices,
+                const std::map<std::string, std::weak_ptr<DeviceInfo>> &playback_devices,
+                int mask) const;
+
+  std::shared_ptr<PlaybackDeviceInfo> addDevice(const std::string &file);
+
+ protected:
+  void onDeviceChanged(platform::BackendDeviceGroup old, platform::BackendDeviceGroup current,
+                       const std::map<std::string, std::weak_ptr<DeviceInfo>> &old_playback_devices,
+                       const std::map<std::string, std::weak_ptr<DeviceInfo>> &new_playback_devices);
+
+  void raiseDevicesChanged(const std::vector<SeDeviceInfo> &removed, const std::vector<SeDeviceInfo> &added);
 
  private:
-  DevicesChangedCallbackPtr devices_changed_callback_{};
+  std::shared_ptr<platform::Backend> backend_;
+  std::shared_ptr<platform::DeviceWather> device_watcher_;
+  std::map<std::string, std::weak_ptr<DeviceInfo>> playback_devices_;
   std::map<int64_t, DevicesChangedCallbackPtr> devices_changed_callbacks_{};
+
+  DevicesChangedCallbackPtr devices_changed_callback_{};
   std::map<int, std::weak_ptr<const StreamProfileBase>> streams_;
   std::mutex _streams_mutex, _devices_changed_callbacks_mtx;
 };
 
-class Device;
-class DeviceList;
-class Sensor;
-
-class Context : public std::enable_shared_from_this<Context> {
- public:
-  Context();
-  explicit Context(std::shared_ptr<SeContext> context);
-  explicit operator std::shared_ptr<SeContext>() const;
-
-  DeviceList queryDevices() const;
-  DeviceList queryDevices(int mask) const;
-  std::vector<Sensor> queryAllSensors() const;
-  Device getSensorParent(const Sensor &sensor) const;
-
-  template<typename T>
-  void setDevicesCahngedCallback(T callback) {}
-
- protected:
-  friend class DeviceHub;
-
-  std::shared_ptr<SeContext> context_;
-};
-
 }  // namespace libsmartereye2
+
+struct SeContext {
+  std::shared_ptr<libsmartereye2::ContextPrivate> context;
+  ~SeContext() { context->stop(); }
+};
 
 #endif  // LIBSMARTEREYE2_CONTEXT_H

@@ -13,55 +13,92 @@
 // limitations under the License.
 
 #include "options.h"
-#include "se_types.h"
+#include "core/options.hpp"
 
 #include <vector>
 
 namespace libsmartereye2 {
 
+Option &OptionsContainer::getOption(OptionKey id) {
+  return const_cast<Option &>(const_cast<const OptionsContainer *>(this)->getOption(id));
+}
+
+const Option &OptionsContainer::getOption(OptionKey id) const {
+  auto it = _options.find(id);
+  if (it == _options.end()) {
+    throw std::runtime_error(toString()
+                                 << "Device does not support option "
+                                 << getOptionName(id) << "!");
+  }
+  return *it->second;
+}
+
+bool OptionsContainer::supportsOption(OptionKey id) const {
+  auto it = _options.find(id);
+  if (it == _options.end()) return false;
+  return it->second->isEnabled();
+}
+
+std::vector<OptionKey> OptionsContainer::getSupportedOptions() const {
+  std::vector<OptionKey> options;
+  for (const auto &option : _options)
+    options.push_back(option.first);
+
+  return options;
+}
+
+std::string OptionsContainer::getOptionName(OptionKey id) const {
+  // TODO
+  return std::string();
+}
+
+}  // namespace libsmartereye2
+
+namespace se2 {
+
 bool Options::supports(OptionKey option) const {
   CHECK_PTR_NOT_NULL(options_);
-  return options_->options_interface->supportsOption(option);
+  return options_->options->supportsOption(option);
 }
 
 std::string Options::getOptionDescription(OptionKey option) const {
   CHECK_PTR_NOT_NULL(options_);
-  return options_->options_interface->getOption(option).getDescription();
+  return options_->options->getOption(option).getDescription();
 }
 
 std::string Options::getOptionName(OptionKey option) const {
   CHECK_PTR_NOT_NULL(options_);
-  return options_->options_interface->getOptionName(option);
+  return options_->options->getOptionName(option);
 }
 
 std::string Options::getOptionValueDescription(OptionKey option, float val) const {
   CHECK_PTR_NOT_NULL(options_);
-  return options_->options_interface->getOption(option).getValueDescription(val);
+  return options_->options->getOption(option).getValueDescription(val);
 }
 
 float Options::getOption(OptionKey option) const {
   CHECK_PTR_NOT_NULL(options_);
-  return options_->options_interface->getOption(option).query();
+  return options_->options->getOption(option).query();
 }
 
 OptionRange Options::getOptionRange(OptionKey option) const {
   CHECK_PTR_NOT_NULL(options_);
-  return options_->options_interface->getOption(option).getRange();
+  return options_->options->getOption(option).getRange();
 }
 
 void Options::setOption(OptionKey option, float value) const {
   CHECK_PTR_NOT_NULL(options_);
-  options_->options_interface->getOption(option).set(value);
+  options_->options->getOption(option).set(value);
 }
 
 bool Options::isOptionReadonly(OptionKey option) const {
   CHECK_PTR_NOT_NULL(options_);
-  return options_->options_interface->getOption(option).isReadonly();
+  return options_->options->getOption(option).isReadonly();
 }
 
 std::vector<OptionKey> Options::getSupportedOptions() const {
   CHECK_PTR_NOT_NULL(options_);
-  return options_->options_interface->getSupportedOptions();
+  return options_->options->getSupportedOptions();
 }
 
 Options &Options::operator=(const Options &other) {
@@ -70,4 +107,4 @@ Options &Options::operator=(const Options &other) {
   return *this;
 }
 
-}  // namespace libsmartereye2
+}  // namespace se2

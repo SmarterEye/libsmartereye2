@@ -35,14 +35,10 @@ Dispatcher::Dispatcher(unsigned int cap)
         catch (...) {}
       }
 
-#ifndef ANDROID
       std::unique_lock<std::mutex> lock(was_flushed_mutex_);
-#endif
       was_flushed_ = true;
       was_flushed_cv_.notify_all();
-#ifndef ANDROID
       lock.unlock();
-#endif
     }
   });
 }

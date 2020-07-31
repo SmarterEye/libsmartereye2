@@ -16,94 +16,10 @@
 #define LIBSMARTEREYE2_FILTER_H
 
 #include "processing.h"
-#include "core/frame_queue.h"
-#include "core/streaming.h"
+#include "core/frame_queue.hpp"
+#include "streaming/streaming.h"
 
 namespace libsmartereye2 {
-
-class Frame;
-class Points;
-class VideoFrame;
-
-class FilterInterface {
- public:
-  virtual Frame process(Frame frame) const = 0;
-  virtual ~FilterInterface() = default;
-};
-
-class Filter : public ProcessingBlock, public FilterInterface {
- public:
-  explicit Filter(const std::shared_ptr<SeProcessingBlock> &block, uint32_t queue_size = 1);
-
-  template<class S>
-  explicit Filter(S processing_func, uint32_t queue_size = 1) {}
-
-  Frame process(Frame frame) const override;
-
-  FrameQueue getQueue() const;
-  SeProcessingBlock *get() const override { return block_.get(); }
-
-  template<class T>
-  bool is() const {
-    T extension(*this);
-    return extension;
-  }
-
-  template<class T>
-  T as() const {
-    T extension(*this);
-    return extension;
-  }
-
-  explicit operator bool() const { return block_ != nullptr; }
-
- private:
-  FrameQueue queue_;
-};
-
-class PointCloud : public Filter {
- public:
-  PointCloud();
-  explicit PointCloud(StreamType stream, int index = 0);
-  explicit PointCloud(const std::shared_ptr<SeProcessingBlock> &block);
-  std::shared_ptr<SeProcessingBlock> init();
-
-  Points calculate(Frame depth);
-  void mapTo(Frame mapped);
-};
-
-class YuvDecoder : public Filter {
- public:
-  YuvDecoder();
-  explicit YuvDecoder(const std::shared_ptr<SeProcessingBlock> &block);
-  std::shared_ptr<SeProcessingBlock> init();
-};
-
-class UnitsTransform : public Filter {
- public:
-  UnitsTransform();
-  explicit UnitsTransform(const std::shared_ptr<SeProcessingBlock> &block);
-  std::shared_ptr<SeProcessingBlock> init();
-};
-
-class Colorizer : public Filter {
- public:
-  Colorizer();
-  explicit Colorizer(float color_scheme);
-  explicit Colorizer(const std::shared_ptr<SeProcessingBlock> &block);
-  std::shared_ptr<SeProcessingBlock> init();
-
-  VideoFrame colorize(Frame depth) const;
-};
-
-class DisparityTransform : public Filter {
- public:
-  explicit DisparityTransform(bool transform_to_disparity = true);
-  explicit DisparityTransform(Filter filter);
-  std::shared_ptr<SeProcessingBlock> init(bool transform_to_disparity);
-
-  friend class Context;
-};
 
 }  // namespace libsmartereye2
 

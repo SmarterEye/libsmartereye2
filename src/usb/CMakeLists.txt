@@ -1,0 +1,21 @@
+target_sources(${LSE2_TARGET}
+        PRIVATE
+        "${CMAKE_CURRENT_LIST_DIR}/usb_foo.h"
+        "${CMAKE_CURRENT_LIST_DIR}/command_transfer.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_context.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_device.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_endpoint.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_handle.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_interface.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_messenger.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_request.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_types.h"
+
+        "${CMAKE_CURRENT_LIST_DIR}/usb_foo.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_context.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_device.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_handle.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_interface.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_messenger.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_request.cc"
+        )

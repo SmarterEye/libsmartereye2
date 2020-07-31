@@ -13,9 +13,28 @@
 // limitations under the License.
 
 #include "se_common.h"
+
+#include <utility>
 #include "easylogging++.h"
 
 #ifdef ENABLE_LOGGER
 #undef ENABLE_LOGGER
 INITIALIZE_EASYLOGGINGPP
 #endif
+
+namespace libsmartereye2 {
+
+Environment &libsmartereye2::Environment::instance() {
+  static Environment env;
+  return env;
+}
+
+void Environment::setTimeService(std::shared_ptr<platform::TimeService> ts) {
+  ts_ = std::move(ts);
+}
+
+std::shared_ptr<platform::TimeService> Environment::getTimeService() {
+  return ts_;
+}
+
+}

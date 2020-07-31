@@ -15,160 +15,99 @@
 #ifndef LIBSMARTEREYE2_FRAME_H
 #define LIBSMARTEREYE2_FRAME_H
 
-#include "core/stream_profile.h"
-#include "device/device.h"
-#include "se_types.h"
-#include "frame_interface.h"
+#include <memory>
+#include "core/core_types.hpp"
+#include "se_callbacks.hpp"
 
 namespace libsmartereye2 {
 
 class SensorInterface;
-class StreamProfile;
-struct SeSensor;
+class StreamProfileInterface;
+class ArchiveInterface;
 
-class Frame {
+class FrameInterface {
  public:
-  Frame() : frame_ref_(nullptr) {}
-  explicit Frame(FrameInterface *ref) : frame_ref_(nullptr) {}
-  Frame(const Frame &other) : frame_ref_(other.frame_ref_) {
-    if (frame_ref_) {
-      addRef();
+  virtual std::shared_ptr<SensorInterface> getSensor() const = 0;
+  virtual void setSensor(std::shared_ptr<SensorInterface> sensor) = 0;
+
+  virtual int64_t getFrameMetadata(const FrameMetadataValue &frame_metadata) const = 0;
+  virtual bool supportsFrameMetadata(const FrameMetadataValue &frame_metadata) const = 0;
+  virtual size_t getFrameDataSize() const = 0;
+  virtual const char *getFrameData() const = 0;
+  virtual double getFrameTimestamp() const = 0;
+  virtual TimestampDomain getFrameTimestampDomain() const = 0;
+  virtual int64_t getFrameIndex() const = 0;
+  virtual std::shared_ptr<StreamProfileInterface> getStream() const = 0;
+
+  virtual void setTimestamp(double new_ts) = 0;
+  virtual void setTimestampDomain(TimestampDomain timestamp_domain) = 0;
+  virtual void setStream(std::shared_ptr<StreamProfileInterface> sp) = 0;
+
+  virtual void acquire() = 0;
+  virtual void release() = 0;
+  virtual void keep() = 0;
+
+  virtual FrameInterface *publish(std::shared_ptr<ArchiveInterface> new_owner) = 0;
+  virtual void unpublish() = 0;
+
+  virtual void markFixed() = 0;
+  virtual bool isFixed() const = 0;
+  virtual void setBlocking(bool state) = 0;
+  virtual bool isBlocking() const = 0;
+
+  virtual ArchiveInterface *getOwner() const = 0;
+};
+
+struct FrameHolder {
+  FrameInterface *frame;
+
+  FrameHolder() : frame(nullptr) {}
+  explicit FrameHolder(FrameInterface *frame) : frame(frame) {}
+  FrameHolder(FrameHolder &&other) noexcept: frame(other.frame) {
+    other.frame = nullptr;
+  }
+
+  ~FrameHolder() {
+    if (frame) {
+      frame->release();
     }
   }
-  Frame(Frame &&other) noexcept: frame_ref_(other.frame_ref_) {}
-  Frame &operator=(Frame other) {
-    swap(other);
+
+  FrameHolder &operator=(FrameHolder &other) = delete;
+  FrameHolder &operator=(FrameHolder &&other) noexcept {
+    if (frame) {
+      frame->release();
+    }
+    frame = other.frame;
+    other.frame = nullptr;
     return *this;
   }
-  explicit operator bool() const { return frame_ref_ != nullptr; }
-  explicit operator FrameInterface *() { return frame_ref_; }
 
-  void swap(Frame &other) {
-    std::swap(frame_ref_, other.frame_ref_);
-//    std::swap(frame_number_, other.frame_number_);
-//    std::swap(profile_, other.profile_);
-  }
+  explicit operator bool() const { return frame != nullptr; }
+  explicit operator FrameInterface *() const { return frame; }
+  FrameInterface *operator->() const { return frame; }
 
-  virtual ~Frame() {
-    if (frame_ref_) {
-      frame_ref_->release();
-    }
-  }
-
-  void keep() { frame_ref_->keep(); }
-
-  SeSensor *getSensor() const {
-    std::shared_ptr<SensorInterface> sensor(frame_ref_->getSensor());
-    DeviceInterface &dev = sensor->getDevice();
-    return nullptr; // TODO
-  }
-  double getTimestamp() const {
-    return frame_ref_->getFrameTimestamp();
-  }
-  int64_t getFrameMetadata(FrameMetadataValue frame_metadata) const {
-    return frame_ref_->getFrameMetadata(frame_metadata);
-  }
-  bool supportsFrameMetadata(FrameMetadataValue frame_metadata) const {
-    return frame_ref_->supportsFrameMetadata(frame_metadata);
-  }
-  int64_t getFrameNumber() const {
-    return frame_ref_->getFrameNumber();
-  }
-  size_t getDataSize() const {
-    return frame_ref_->getFrameDataSize();
-  }
-  const char *getData() const {
-    return frame_ref_->getFrameData();
-  }
-  StreamProfile getProfile() const {
-    auto stream = frame_ref_->getStream();
-    return StreamProfile(stream.get());
-  }
-
-  template<class T>
-  bool is() const {
-    T extension(*this);
-    return extension;
-  }
-
-  template<class T>
-  T as() const {
-    T extension(*this);
-    return extension;
-  }
-
-  FrameInterface *get() const { return frame_ref_; }
-
- protected:
-  void addRef() const { frame_ref_->acquire(); }
-  void reset() {
-    if (frame_ref_) {
-      frame_ref_->release();
-    }
-    frame_ref_ = nullptr;
-  }
+  FrameHolder clone() const { return FrameHolder(*this); }
+  bool isBlocking() const { return frame->isBlocking(); }
 
  private:
-  friend class FrameQueue;
-
-  FrameInterface *frame_ref_;
-//  StreamProfile profile_;
-//  uint64_t frame_number_ = 0;
-};
-
-class VideoFrame : public Frame {
- public:
-  explicit VideoFrame(const Frame &frame) : Frame(frame) {}
-
-  int width() const;
-  int height() const;
-  int strideInBytes() const;
-  int bitsPerPixel() const;
-  int bytesPerPixel() const;
-};
-
-class Points : public Frame {
- public:
-  struct Vertex {
-    float x, y, z;
-    explicit operator const float *() const { return &x; }
-  };
-
-  struct TextureCoordinate {
-    float u, v;
-    explicit operator const float *() const { return &u; }
-  };
-
-  explicit Points() : Frame(), size_(0) {}
-  explicit Points(const Frame &frame) : Frame(frame), size_(0) {}
-
-  const Vertex *vertices() const;
-  const TextureCoordinate *textureCoordinate() const;
-  void exportToPly(const std::string *fnmae, VideoFrame texture) const;
-  size_t size() const { return size_; }
-
- private:
-  size_t size_;
-};
-
-class MotionFrame : public Frame {
- public:
-  explicit MotionFrame(const Frame &frame) : Frame(frame) {}
-
-  SeVector3f getMotionData() const;
-
+  FrameHolder(const FrameHolder &other) : frame(other.frame) {
+    if (frame) frame->acquire();
+  }
 };
 
 template<class T>
-class FramCallback : public SeFrameCallback {
-  T on_frame_function_;
-
+class InternalFrameCallback : public SeFrameCallback {
+  T on_frame_function; //Callable of type: void(FrameInterface* frame)
  public:
-  explicit FramCallback(T on_frame) : on_frame_function_(on_frame) {}
-  void onFrame(FrameInterface *frame) override {}
-  void release() override { delete this; }
+  explicit InternalFrameCallback(T on_frame) : on_frame_function(on_frame) {}
+
+  virtual void onFrame(FrameInterface *frame) override {
+    on_frame_function(FrameHolder(frame));
+  }
+  virtual void release() override { delete this; }
 };
 
 }  // namespace libsmartereye2
 
-#endif  // LIBSMARTEREYE2_FRAME_H
+#endif //LIBSMARTEREYE2_FRAME_H

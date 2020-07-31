@@ -17,89 +17,99 @@
 
 #include <utility>
 
-#include "sensor.h"
 #include "context.h"
+#include "backend.h"
+#include "core/info.h"
+#include "sensor/sensor.h"
+#include "streaming/streaming.h"
+
+#include "se_callbacks.hpp"
+#include "device/device_types.hpp"
+
+using namespace libsmartereye2;
+
+namespace libsmartereye2 {
+class DeviceInterface;
+}
+
+struct SeDevice {
+  std::shared_ptr<ContextPrivate> context;
+  std::shared_ptr<DeviceInfo> info;
+  std::shared_ptr<DeviceInterface> device;
+};
+
+struct SeDeviceInfo {
+  std::shared_ptr<ContextPrivate> context;
+  std::shared_ptr<DeviceInfo> info;
+};
+
+struct SeDeviceList {
+  std::shared_ptr<ContextPrivate> context;
+  std::vector<SeDeviceInfo> list;
+};
 
 namespace libsmartereye2 {
 
-class EventInfomation;
-class DeviceList;
+class Matcher;
+class FrameHolder;
+class ContextPrivate;
 
-template<class T>
-class DevicesChangedCallback : public SeDevicesChangedCallback {
- public:
-  explicit DevicesChangedCallback(T callback) : callback_(callback) {}
-  void onDevicesChanged(SeDeviceList *removed, SeDeviceList *added) override {
-    std::shared_ptr<SeDeviceList> old(removed);
-    std::shared_ptr<SeDeviceList> news(added);
-
-//    EventInfomation info(DeviceList(old), DeviceList(news));
-//    callback_(info);
-  }
-  void release() override { delete this; }
-
- private:
-  T callback_;
-};
-
-class DeviceInterface : public std::enable_shared_from_this<DeviceInterface> {
+class DeviceInterface : public virtual InfoInterface, public std::enable_shared_from_this<DeviceInterface> {
  public:
   virtual SensorInterface &getSensor(size_t i) = 0;
   virtual const SensorInterface &getSensor(size_t i) const = 0;
   virtual size_t getSensorCount() const = 0;
   virtual void hardwareReset() = 0;
-  virtual std::string getInfo(CameraInfo info) const = 0;
-  virtual bool supportsInfo(CameraInfo info) const = 0;
 
   virtual std::shared_ptr<ContextPrivate> getContext() const = 0;
-  virtual std::pair<int32_t, Extrinsics> getExtrinsics(const StreamProfileBase &stream) const = 0;
+  virtual std::pair<int32_t, Extrinsics> getExtrinsics(const StreamInterface &stream) const = 0;
+  virtual platform::BackendDeviceGroup getDeviceData() const = 0;
 
   virtual bool isValid() const = 0;
+
+  virtual std::shared_ptr<Matcher> createMatcher(const FrameHolder &frame) const = 0;
+
+  virtual std::vector<TaggedProfile> getProfilesTags() const = 0;
+  virtual void tagProfiles(StreamProfiles profiles) const = 0;
 };
 
-class Device {
+class DevicePrivate : public virtual DeviceInterface, public InfoContainer {
  public:
-  Device() : device_(nullptr) {}
-  explicit Device(std::shared_ptr<SeDevice> dev) : device_(std::move(dev)) {}
-  virtual ~Device() = default;
+  ~DevicePrivate() override;
 
-  explicit operator std::shared_ptr<SeDevice>() const { return device_; }
-  explicit operator bool() const { return device_ != nullptr; }
-  Device &operator=(std::shared_ptr<SeDevice> dev);
-  Device &operator=(const Device &dev);
+  SensorInterface &getSensor(size_t i) override;
+  const SensorInterface &getSensor(size_t i) const override;
+  size_t getSensorCount() const override;
+  void hardwareReset() override;
+  std::shared_ptr<ContextPrivate> getContext() const override;
+  std::pair<int32_t, Extrinsics> getExtrinsics(const StreamInterface &stream) const override;
+  platform::BackendDeviceGroup getDeviceData() const override;
+  bool isValid() const override;
+  void tagProfiles(StreamProfiles profiles) const override;
 
-  std::vector<Sensor> querySensors() const;
-  bool supports(CameraInfo info) const;
-  std::string getInfo(CameraInfo info) const;
-  void hardwareReset();
-
-  template<typename T>
-  T first() const {
-    for (auto &&s : querySensors()) {
-      if (auto t = s.as<T>()) return t;
-    }
-  }
-
-  template<typename T>
-  bool is() const {
-    T extension(*this);
-    return extension;
-  }
-
-  template<typename T>
-  T as() const {
-    T extension(*this);
-    return extension;
-  }
-
-  const std::shared_ptr<SeDevice> &get() const {
-    return device_;
-  }
+  std::shared_ptr<Matcher> createMatcher(const FrameHolder &frame) const override {return nullptr;}
 
  protected:
-  friend class DeviceHub;
+  int addSensor(const std::shared_ptr<SensorInterface> &sensor_base);
+  int assignSensor(const std::shared_ptr<SensorInterface> &sensor_base, int8_t idx);
+  void registerStreamToExtrinsicGroup(const StreamProfileBase &stream, int32_t groupd_index);
 
-  std::shared_ptr<SeDevice> device_;
+  DevicePrivate(std::shared_ptr<ContextPrivate> context,
+                platform::BackendDeviceGroup group,
+                bool device_changed_notifications = false
+  );
+
+  std::map<int, std::pair<int32_t, std::shared_ptr<const StreamInterface>>> extrinsics_;
+
+ private:
+  std::vector<std::shared_ptr<SensorInterface>> sensors_;
+  std::shared_ptr<ContextPrivate> context_;
+  const platform::BackendDeviceGroup group_;
+  bool is_valid_;
+  bool device_changed_notifications_;
+  mutable std::mutex device_changed_mtx_;
+  int64_t callback_id_{};
+  std::vector<TaggedProfile> profiles_tags_;
 };
 
 }  // namespace libsmartereye2

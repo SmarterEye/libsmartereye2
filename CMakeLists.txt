@@ -14,18 +14,20 @@ else()
     add_library(${LSE2_TARGET} STATIC "")
 endif()
 
-include(src/CMakeLists.txt)
 include(3rdparty/CMakeLists.txt)
+include(include/CMakeLists.txt)
+include(src/CMakeLists.txt)
 
 add_dependencies(${LSE2_TARGET} usb)
 add_dependencies(${LSE2_TARGET} uv)
 
-target_link_libraries(${LSE2_TARGET} PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${LSE2_TARGET} PRIVATE ${CMAKE_THREAD_LIBS_INIT} usb)
 target_include_directories(${LSE2_TARGET}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
         PRIVATE
+        include/smartereye2
         src
         ${LOG_INC_DIR}
         ${JSON_INC_DIR}
@@ -35,6 +37,9 @@ target_include_directories(${LSE2_TARGET}
 
 # set library version
 set_target_properties(${LSE2_TARGET} PROPERTIES VERSION ${SMARTEREYE_VERSION_STRING} SOVERSION "${SMARTEREYE_VERSION_MAJOR}.${SMARTEREYE_VERSION_MINOR}")
+
+include_directories(include/smartereye2 src)
+link_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)

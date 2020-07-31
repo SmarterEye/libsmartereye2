@@ -1,0 +1,20 @@
+target_sources(${LSE2_TARGET}
+        PRIVATE
+        "${CMAKE_CURRENT_LIST_DIR}/options.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/frame.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_aggregator.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_data.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_queue.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_source.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/metadata_parser.cc"
+
+        "${CMAKE_CURRENT_LIST_DIR}/options.h"
+        "${CMAKE_CURRENT_LIST_DIR}/info.h"
+        "${CMAKE_CURRENT_LIST_DIR}/frame.h"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_aggregator.h"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_archive.h"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_data.h"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_queue.h"
+        "${CMAKE_CURRENT_LIST_DIR}/frame_source.h"
+        "${CMAKE_CURRENT_LIST_DIR}/metadata_parser.h"
+        )

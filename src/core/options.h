@@ -12,38 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LIBSMARTEREYE2_OPTION_H_
-#define LIBSMARTEREYE2_OPTION_H_
+#ifndef LIBSMARTEREYE2_OPTION_H
+#define LIBSMARTEREYE2_OPTION_H
 
 #include <vector>
+#include <map>
+#include <memory>
 
-#include "se_common.h"
-#include "se_util.h"
+#include "se_util.hpp"
+#include "core/core_types.hpp"
 
 namespace libsmartereye2 {
+class OptionsInterface;
+}
 
-enum class OptionKey {
-  FRAMES_QUEUE_SIZE,
-  STREAM_FILTER,
-  STREAM_FORMAT_FILTER,
-  STREAM_INDEX_FILTER,
-  COLOR_SCHEME,
-  MIN_DISTANCE,
-  MAX_DISTANCE,
-  MOTION_MODULE_TEMPERATURE,
-  MOTION_RANGE,
-  LASER_POWER,
-  // TODO
+struct SeOptions {
+  SeOptions(libsmartereye2::OptionsInterface *options) : options(options) {}
+  libsmartereye2::OptionsInterface *options;
 };
 
-struct OptionRange {
-  float min;
-  float max;
-  float step;
-  float def;
-};
-
-struct SeOptions;
+namespace libsmartereye2 {
 
 class Option : public noncopyable {
  public:
@@ -65,36 +53,26 @@ class OptionsInterface {
   virtual std::string getOptionName(OptionKey id) const = 0;
 };
 
-class Options : public noncopyable {
+class OptionsContainer : public virtual OptionsInterface {
  public:
-  bool supports(OptionKey option) const;
-  std::string getOptionDescription(OptionKey option) const;
-  std::string getOptionName(OptionKey option) const;
-  std::string getOptionValueDescription(OptionKey option, float val) const;
-  float getOption(OptionKey option) const;
-  OptionRange getOptionRange(OptionKey option) const;
-  void setOption(OptionKey option, float value) const;
-  bool isOptionReadonly(OptionKey option) const;
-  std::vector<OptionKey> getSupportedOptions() const;
+  Option &getOption(OptionKey id) override;
+  const Option &getOption(OptionKey id) const override;
+  bool supportsOption(OptionKey id) const override;
+  std::vector<OptionKey> getSupportedOptions() const override;
+  std::string getOptionName(OptionKey id) const override;
 
-  Options &operator=(const Options &other);
-  Options(const Options &other) : options_(other.options_) {}
-
-  virtual ~Options() = default;
-
- protected:
-  explicit Options(SeOptions *opt = nullptr) : options_(opt) {}
-
-  template<typename T>
-  Options &operator=(const T &dev) {
-    options_ = reinterpret_cast<SeOptions *>(dev.get());
-    return *this;
+  void registerOption(OptionKey id, std::shared_ptr<Option> option) {
+    _options[id] = std::move(option);
   }
 
- private:
-  SeOptions *options_;
+  void unregisterOption(OptionKey id) {
+    _options.erase(id);
+  }
+
+ protected:
+  std::map<OptionKey, std::shared_ptr<Option>> _options;
 };
 
 }  // namespace libsmartereye2
 
-#endif  // LIBSMARTEREYE2_OPTION_H_
+#endif  // LIBSMARTEREYE2_OPTION_H

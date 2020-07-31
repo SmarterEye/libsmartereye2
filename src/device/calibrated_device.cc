@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <smartereye2/device/calibrated_device.hpp>
+
 #include "calibrated_device.h"
 
-namespace libsmartereye2 {
+namespace se2 {
 
 CalibratedDevice::CalibratedDevice(const Device& device)
     : Device(device.get()) {
@@ -28,5 +30,4 @@ void CalibratedDevice::writeCalibration() {
 void CalibratedDevice::resetToFactoryCalibration() {
 
 }
-
-}  // namespace libsmartereye2
+}  // namespace se2

@@ -57,7 +57,7 @@ add_library(usb STATIC ${LIBUSB_C} ${LIBUSB_H})
 
 if (WIN32)
     set_target_properties(usb PROPERTIES
-            FOLDER "3rd Party"
+            FOLDER "3rdparty"
             )
     include_directories(msvc)
     foreach (flag_var
@@ -85,7 +85,10 @@ if (APPLE)
 endif ()
 
 if ((NOT APPLE) AND (NOT ANDROID) AND (NOT WIN32))
-    execute_process(COMMAND ./autogen.sh WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+    if (NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/config.h)
+        execute_process(COMMAND ./autogen.sh WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})
+    endif ()
+
     target_include_directories(usb PRIVATE ${CMAKE_CURRENT_LIST_DIR})
     TARGET_LINK_LIBRARIES(usb udev)
 endif ()

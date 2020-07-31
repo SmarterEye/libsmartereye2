@@ -1,59 +1,18 @@
 target_sources(${LSE2_TARGET}
         PRIVATE
         "${CMAKE_CURRENT_LIST_DIR}/se_common.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/core/options.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/core/frame_interface.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/core/frame_queue.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/core/metadata_parser.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/core/streaming.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/core/stream_profile.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/device/context.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/device/device.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/device/record_playback.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/device/calibrated_device.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/device/update_device.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/device/motion.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/device/sensor.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/pipeline/pipeline.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/pipeline/pipeline_profile.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/pipeline/config.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/proc/processing.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/proc/filter.cc"
-        "${CMAKE_CURRENT_LIST_DIR}/concurrency/dispatcher.cc"
-
         "${CMAKE_CURRENT_LIST_DIR}/se_common.h"
-        "${CMAKE_CURRENT_LIST_DIR}/se_callbacks.h"
-        "${CMAKE_CURRENT_LIST_DIR}/se_types.h"
-        "${CMAKE_CURRENT_LIST_DIR}/se_util.h"
-        "${CMAKE_CURRENT_LIST_DIR}/concurrency/concurrency.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/options.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/frame.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/frame_interface.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/frame_extension.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/frame_queue.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/frame_set.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/disparity_frame.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/metadata_parser.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/streaming.h"
-        "${CMAKE_CURRENT_LIST_DIR}/core/stream_profile.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/context.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/device.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/record_playback.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/calibrated_device.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/update_device.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/device_hub.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/device_info.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/device_list.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/motion.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/sensor.h"
-        "${CMAKE_CURRENT_LIST_DIR}/device/event_infomation.h"
-        "${CMAKE_CURRENT_LIST_DIR}/pipeline/pipeline.h"
-        "${CMAKE_CURRENT_LIST_DIR}/pipeline/pipeline_profile.h"
-        "${CMAKE_CURRENT_LIST_DIR}/pipeline/config.h"
-        "${CMAKE_CURRENT_LIST_DIR}/proc/processing.h"
-        "${CMAKE_CURRENT_LIST_DIR}/proc/filter.h"
-        "${CMAKE_CURRENT_LIST_DIR}/concurrency/concurrency.h"
-        "${CMAKE_CURRENT_LIST_DIR}/concurrency/consumer_queue.h"
-        "${CMAKE_CURRENT_LIST_DIR}/concurrency/dispatcher.h"
-        "${CMAKE_CURRENT_LIST_DIR}/concurrency/watchdog.h"
         )
+
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/concurrency)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/core)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/device)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/mock)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/net)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/pipeline)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/proc)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/sensor)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/streaming)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/usb)
+
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/gemini)

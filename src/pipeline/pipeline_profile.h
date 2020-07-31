@@ -18,31 +18,59 @@
 #include <memory>
 #include <vector>
 
+#include "streaming/streaming.h"
+#include "sensor/sensor.h"
+
+namespace libsmartereye2 {
+class PipelineProfilePrivate;
+}
+
+struct SePipelineProfile {
+  std::shared_ptr<libsmartereye2::PipelineProfilePrivate> profile;
+};
+
 namespace libsmartereye2 {
 
-class PipelineProfilePrivate;
-class StreamProfile;
-class Context;
-class Device;
-enum class StreamType;
+class DeviceInterface;
 
-class PipelineProfile {
+class MultiStream;
+
+class PipelineProfilePrivate {
  public:
-  PipelineProfile() : pipeline_profile_(nullptr) {}
-  explicit PipelineProfile(std::shared_ptr<PipelineProfilePrivate> profile) : pipeline_profile_(std::move(profile)) {}
+  explicit PipelineProfilePrivate(const std::shared_ptr<DeviceInterface> dev, std::string file = "");
 
-  explicit operator bool() const { return pipeline_profile_ != nullptr; }
-  explicit operator std::shared_ptr<PipelineProfilePrivate>() { return pipeline_profile_; }
+  std::shared_ptr<DeviceInterface> getDevice();
+  StreamProfiles getActiveStreams() const;
 
-  std::vector<StreamProfile> getStreams() const;
-  StreamProfile getStream(StreamType stream_type, int index = -1) const;
-  Device getDevice() const;
+  const std::shared_ptr<MultiStream> multi_stream_;
 
  private:
-  friend class PipelineConfig;
-  friend class Pipeline;
+  const std::shared_ptr<DeviceInterface> device_;
+  std::string to_file_;
+};
 
-  std::shared_ptr<PipelineProfilePrivate> pipeline_profile_;
+class MultiStream {
+ public:
+  MultiStream(const std::shared_ptr<DeviceInterface> dev);
+
+  void open();
+  void close();
+
+  template<class T>
+  void start(T callback) {
+    for (auto &&sensor : sensors_) {
+      sensor->start(callback);
+    }
+  }
+  void stop();
+
+  StreamProfiles getAllProfiles() const { return all_profiles_; }
+  std::vector<SensorInterface *> getSensors() const { return sensors_; }
+
+ private:
+  StreamProfiles all_profiles_;
+  std::vector<SensorInterface *> sensors_;
+  std::map<SensorInterface *, StreamProfiles> sensor_to_profiles_;
 };
 
 }  // namespace libsmartereye2

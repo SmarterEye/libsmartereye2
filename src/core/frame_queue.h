@@ -17,49 +17,12 @@
 
 #include <memory>
 
+#include "frame.h"
 #include "concurrency/consumer_queue.h"
 
-namespace libsmartereye2 {
-
-class Frame;
-
-class FrameQueue {
- public:
-
-  using SeFrameQueue = ConsumerQueue<FrameHolder>;
-
-  explicit FrameQueue(uint32_t capacity, bool keep_frames = false)
-      : capacity_(capacity), keep_(keep_frames) {
-  }
-
-  FrameQueue() : FrameQueue(1) {}
-
-  void operator()(Frame frame);
-
-  void enqueue(Frame frame);
-
-  Frame waitForFrame(int32_t timeout_ms = 5000) const;
-
-  template<typename T>
-  bool pollForFrame(T *output) const {
-    return false;
-  }
-
-  template<typename T>
-  bool tryWaitForFrame(T *output, uint32_t timeout_ms = 5000) const {
-    return false;
-  }
-
-  size_t capacity() const { return capacity_; }
-
-  bool keepFrames() const { return keep_; }
-
- private:
-  std::shared_ptr<SeFrameQueue> queue_;
-  size_t capacity_;
-  bool keep_;
+struct SeFrameQueue {
+  explicit SeFrameQueue(int capacity) : queue(capacity) {}
+  libsmartereye2::ConsumerQueue<libsmartereye2::FrameHolder> queue;
 };
-
-}  // namespace libsmartereye2
 
 #endif //LIBSMARTEREYE2_FRAME_QUEUE_H

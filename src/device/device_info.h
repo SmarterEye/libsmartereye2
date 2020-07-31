@@ -16,13 +16,17 @@
 #define LIBSMARTEREYE2_DEVICE_INFO_H
 
 #include <memory>
+#include <utility>
 #include <vector>
-#include "se_util.h"
+
+#include "backend.h"
+#include "mock/playback/playback_device.h"
+#include "se_util.hpp"
 
 namespace libsmartereye2 {
 
 class DeviceInterface;
-class Context;
+class ContextPrivate;
 
 class DeviceInfo : public noncopyable {
  public:
@@ -30,18 +34,65 @@ class DeviceInfo : public noncopyable {
     return create(context_, register_device_notifications);
   }
 
+  virtual platform::BackendDeviceGroup getDeviceData() const = 0;
+
   virtual bool operator==(const DeviceInfo &other) const {
-    return false;
+    return getDeviceData() == other.getDeviceData();
   }
 
  protected:
-  explicit DeviceInfo(std::shared_ptr<Context> context)
+  explicit DeviceInfo(std::shared_ptr<ContextPrivate> context)
       : context_(move(context)) {}
 
-  virtual std::shared_ptr<DeviceInterface> create(std::shared_ptr<Context> ctx,
+  virtual std::shared_ptr<DeviceInterface> create(std::shared_ptr<ContextPrivate> ctx,
                                                   bool register_device_notifications) const = 0;
 
-  std::shared_ptr<Context> context_;
+  std::shared_ptr<ContextPrivate> context_;
+};
+
+class ReadonlyDeviceInfo : public DeviceInfo {
+ public:
+  explicit ReadonlyDeviceInfo(const std::shared_ptr<DeviceInterface> &dev) : DeviceInfo(dev->getContext()) {}
+
+  std::shared_ptr<DeviceInterface> createDevice(bool register_device_notifications) const override {
+    return dev_;
+  }
+
+  platform::BackendDeviceGroup getDeviceData() const override {
+    return platform::BackendDeviceGroup({platform::PlaybackDeviceInfo{dev_->getFileName()}});
+  }
+
+  std::shared_ptr<DeviceInterface> create(std::shared_ptr<ContextPrivate> ctx,
+                                          bool register_device_notifications) const override {
+    return dev_;
+  }
+
+ private:
+  std::shared_ptr<PlaybackDevice> dev_;
+};
+
+class PlaybackDeviceInfo : public DeviceInfo {
+ public:
+  explicit PlaybackDeviceInfo(std::shared_ptr<PlaybackDevice> dev)
+      : DeviceInfo(nullptr), dev_(std::move(dev)) {
+
+  }
+
+  std::shared_ptr<DeviceInterface> createDevice(bool) const override {
+    return dev_;
+  }
+
+  platform::BackendDeviceGroup getDeviceData() const override {
+    return platform::BackendDeviceGroup({platform::PlaybackDeviceInfo{dev_->getFileName()}});
+  }
+
+ protected:
+  std::shared_ptr<DeviceInterface> create(std::shared_ptr<ContextPrivate>, bool) const override {
+    return dev_;
+  }
+
+ private:
+  std::shared_ptr<PlaybackDevice> dev_;
 };
 
 }  // namespace libsmartereye2

@@ -19,14 +19,6 @@
 
 namespace libsmartereye2 {
 
-class CalibratedDevice : public Device {
- public:
-  explicit CalibratedDevice(const Device& device);
-
-  void writeCalibration();
-  void resetToFactoryCalibration();
-};
-
 }  // namespace libsmartereye2
 
 #endif //LIBSMARTEREYE2_CALIBRATED_DEVICE_H

@@ -13,32 +13,78 @@
 // limitations under the License.
 
 #include "processing.h"
-#include "core/frame.h"
-#include "se_types.h"
+#include "proc/processing.hpp"
+
+#include <memory>
+
+#include "proc/syncer_process.h"
+#include "easylogging++.h"
 
 namespace libsmartereye2 {
 
-struct SeProcessingBlock : public SeOptions, public noncopyable {
-  explicit SeProcessingBlock(const std::shared_ptr<ProcessingBlockInterface> &block)
-      : SeOptions(block.get()), block_(block) {}
-
-  std::shared_ptr<ProcessingBlockInterface> block_;
-};
-
-void ProcessingBlock::invoke(Frame frame) const {
-
+ProcessingBlock::ProcessingBlock(const std::string &name)
+    : source_wrapper_(frame_source_) {
+  registerOption(OptionKey::FRAMES_QUEUE_SIZE, frame_source_.get_published_size_option());
+  registerInfo(CameraInfo::CAMERA_INFO_NAME, name);
+  frame_source_.init(std::shared_ptr<MetadataParserMap>());
 }
 
-bool ProcessingBlock::support(CameraInfo info) const {
-  return false;
+void ProcessingBlock::setProcessingCallback(FrameProcessorCallbackPtr callback) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  callback_ = callback;
 }
 
-std::string ProcessingBlock::getInfo(CameraInfo info) const {
-  return std::string();
+void ProcessingBlock::setOutputCallback(FrameCallbackPtr callback) {
+  frame_source_.set_callback(callback);
 }
 
-void ProcessingBlock::registerSimpleOption(OptionKey option_key, OptionRange range) {
-
+void ProcessingBlock::invoke(FrameHolder frame) {
+  auto callback = frame_source_.begin_callback();
+  try {
+    if (callback_) {
+      FrameInterface *frame_ptr = nullptr;
+      std::swap(frame.frame, frame_ptr);
+      auto source = new SeSyntheticSource{&source_wrapper_};
+      callback_->onFrame(frame_ptr, source);
+    }
+  }
+  catch (std::exception const &e) {
+    LOG(ERROR) << "Exception was thrown during user processing callback: " << std::string(e.what());
+  }
+  catch (...) {
+    LOG(ERROR) << "Exception was thrown during user processing callback!";
+  }
 }
 
 }  // namespace libsmartereye2
+
+namespace se2 {
+
+void ProcessingBlock::invoke(Frame frame) const {
+  SeFrame *ptr = nullptr;
+  std::swap(frame.frame_ref_, ptr);
+  block_->block->invoke(libsmartereye2::FrameHolder(ptr));
+}
+
+bool ProcessingBlock::support(CameraInfo info) const {
+  return block_->block->supportsInfo(info);
+}
+
+std::string ProcessingBlock::getInfo(CameraInfo info) const {
+  return block_->block->getInfo(info);
+}
+
+void ProcessingBlock::registerSimpleOption(OptionKey option_key, OptionRange range) {
+  if (block_->options->supportsOption(option_key)) return;
+
+  // TODO
+  std::shared_ptr<libsmartereye2::Option> foo = nullptr;
+  dynamic_cast<libsmartereye2::OptionsContainer *>(block_->options)->registerOption(option_key, foo);
+}
+
+std::shared_ptr<SeProcessingBlock> AsynchronousSyncer::init() {
+  auto block = std::make_shared<libsmartereye2::SyncerProcessUnit>();
+  return std::make_shared<SeProcessingBlock>(block);
+}
+
+}  // namespace se2

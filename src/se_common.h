@@ -17,4 +17,71 @@
 
 #define ENABLE_LOGGER
 
+#include <atomic>
+#include <memory>
+#include <chrono>
+#include <fstream>
+
+namespace libsmartereye2 {
+
+namespace util {
+
+static bool fileExists(const std::string &filename) {
+  std::ifstream f(filename);
+  return f.good();
+}
+
+class UniqueId {
+ public:
+  static uint64_t generateId() {
+    static std::atomic<uint64_t> id(0);
+    return ++id;
+  }
+
+  UniqueId(const UniqueId &) = delete;
+  UniqueId &operator=(const UniqueId &) = delete;
+};
+
+}  // namespace util
+
+namespace platform {
+
+class TimeService {
+ public:
+  virtual double getTime() const = 0;
+};
+
+class OsTimeService : public TimeService {
+ public:
+  double getTime() const override {
+    return std::chrono::duration<double, std::milli>(
+        std::chrono::system_clock::now().time_since_epoch()
+    ).count();
+  }
+};
+
+}  // namespace platform
+
+class Environment {
+ public:
+  static Environment &instance();
+
+  int generateStreamId() { return _stream_id.fetch_add(1); }
+  void setTimeService(std::shared_ptr<platform::TimeService> ts);
+  std::shared_ptr<platform::TimeService> getTimeService();
+
+  Environment(const Environment &) = delete;
+  Environment(const Environment &&) = delete;
+  Environment operator=(const Environment &) = delete;
+  Environment operator=(const Environment &&) = delete;
+
+ private:
+  std::atomic<int> _stream_id{};
+  std::shared_ptr<platform::TimeService> ts_;
+
+  Environment() { _stream_id = 0; }
+};
+
+}  // namespace libsmartereye2
+
 #endif  // LIBSMARTEREYE2_SE_COMMON_H
