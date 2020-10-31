@@ -68,7 +68,7 @@ class SensorBase : public virtual SensorInterface, public virtual OptionsContain
                    public std::enable_shared_from_this<SensorBase> {
  public:
   explicit SensorBase(const std::string &name, DevicePrivate *device);
-  ~SensorBase() override { frame_source_.flush(); }
+  ~SensorBase() override { frame_source_->flush(); }
 
   virtual StreamProfiles initStreamProfiles() = 0;
 
@@ -92,8 +92,7 @@ class SensorBase : public virtual SensorInterface, public virtual OptionsContain
   std::atomic<bool> is_opened_;
   std::shared_ptr<MetadataParserMap> metadata_parsers_ = nullptr;
 
-  SensorBase *source_owner_ = nullptr;
-  FrameSource frame_source_;
+  std::shared_ptr<FrameSource> frame_source_;
   DevicePrivate *device_owner_;
   StreamProfiles profiles_;
 

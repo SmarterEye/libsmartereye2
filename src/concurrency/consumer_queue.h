@@ -117,7 +117,7 @@ class ConsumerQueue {
   std::deque<T> queue_;
   mutable std::mutex mutex_;
   std::condition_variable deq_cv_; // not empty signal
-  std::condition_variable enq_cv_; // not empty signal
+  std::condition_variable enq_cv_; // not full signal
 
   uint32_t capacity_;
   bool accepting_;

@@ -27,7 +27,7 @@ using StreamId = int;
 
 class FrameAggregator : public ProcessingBlock {
  public:
-  FrameAggregator(std::vector<int> streams_to_aggregate, std::vector<int> &streams_to_sync);
+  explicit FrameAggregator(std::vector<int> streams_to_aggregate);
 
   bool dequeue(FrameHolder *item, uint32_t timeout_ms);
   bool tryDequeue(FrameHolder *item);
@@ -41,7 +41,6 @@ class FrameAggregator : public ProcessingBlock {
   std::map<StreamId, FrameHolder> last_set_;
   std::unique_ptr<ConsumerQueue<FrameHolder>> queue_;
   std::vector<int> streams_to_aggregate_ids_;
-//  std::vector<int> streams_to_sync_ids_;
   std::atomic<bool> accepting_;
 };
 

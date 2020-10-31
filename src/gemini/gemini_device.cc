@@ -93,7 +93,7 @@ void GeminiDevice::hardwareReset() {
 
 platform::UsbStatus GeminiDevice::control_transfer_in(int cmd,
                                                       int index,
-                                                      platform::UsbCommonPack *response,
+                                                      platform::UsbCommonPackHead *response,
                                                       int buffer_size) {
   if (!response) {
     LOG(ERROR) << "response buffer is empty!";
@@ -108,7 +108,7 @@ platform::UsbStatus GeminiDevice::control_transfer_in(int cmd,
 
 platform::UsbStatus GeminiDevice::control_transfer_out(int cmd,
                                                        int index,
-                                                       const platform::UsbCommonPack *request,
+                                                       const platform::UsbCommonPackHead *request,
                                                        int buffer_size) {
   uint32_t transferred = 0;
   int ret = usb_messenger_->control_transfer(kUsbRequestTypeOut, ENDP0_REQUEST_OUT, cmd, index,
@@ -116,8 +116,8 @@ platform::UsbStatus GeminiDevice::control_transfer_out(int cmd,
   return static_cast<platform::UsbStatus>(ret);
 }
 
-platform::UsbStatus GeminiDevice::bulk_request_response(const platform::UsbCommonPack &request,
-                                                        platform::UsbCommonPack &response,
+platform::UsbStatus GeminiDevice::bulk_request_response(const platform::UsbCommonPackHead &request,
+                                                        platform::UsbCommonPackHead &response,
                                                         size_t max_response_size,
                                                         bool assert_success) {
   std::lock_guard<std::mutex> lock(bulk_mutex_);
@@ -170,7 +170,7 @@ platform::UsbStatus GeminiDevice::bulk_request_response(const platform::UsbCommo
   return static_cast<platform::UsbStatus>(e);
 }
 
-platform::UsbStatus GeminiDevice::stream_write(const platform::UsbCommonPack &request) {
+platform::UsbStatus GeminiDevice::stream_write(const platform::UsbCommonPackHead &request) {
   std::lock_guard<std::mutex> lock(bulk_mutex_);
 
   uint32_t length = request.pack_length;
@@ -190,7 +190,7 @@ platform::UsbStatus GeminiDevice::stream_write(const platform::UsbCommonPack &re
   return static_cast<platform::UsbStatus>(e);
 }
 
-platform::UsbStatus GeminiDevice::stream_read(platform::UsbCommonPack &response) {
+platform::UsbStatus GeminiDevice::stream_read(platform::UsbCommonPackHead &response) {
   std::lock_guard<std::mutex> lock(bulk_mutex_);
 
   int e = -1;
@@ -205,15 +205,15 @@ platform::UsbStatus GeminiDevice::stream_read(platform::UsbCommonPack &response)
     return static_cast<platform::UsbStatus>(e);
   }
 
-  // drop when blocking over 50ms
-  e = usb_messenger_->bulk_transfer(endpoint_bulk_in_, img_buf, 1024, transferred, 50);
+  // drop when blocking over 80ms
+  e = usb_messenger_->bulk_transfer(endpoint_bulk_in_, img_buf, 1024, transferred, 80);
   if (e != platform::SE2_USB_STATUS_SUCCESS) {
     LOG(ERROR) << "Stream read 1 error " << platform::kUsbStatus2String.at(e);
     return static_cast<platform::UsbStatus>(e);
   }
 
-  // head size: UsbCommonPack + uint64_t(timestamp)
-  if (transferred < sizeof(platform::UsbCommonPack) + sizeof(uint64_t)) {
+  // head size: UsbCommonPackHead + uint64_t(timestamp)
+  if (transferred < sizeof(platform::UsbCommonPackHead) + sizeof(uint64_t)) {
     e = reset_usb_endpoint();
     if (e != platform::SE2_USB_STATUS_SUCCESS) {
       return static_cast<platform::UsbStatus>(e);
@@ -230,19 +230,18 @@ platform::UsbStatus GeminiDevice::stream_read(platform::UsbCommonPack &response)
   auto read_size = response.pack_length - transferred;
   img_buf += transferred;
 
-  bulk_transfer:
-  e = usb_messenger_->bulk_transfer(endpoint_bulk_in_, img_buf, read_size, transferred, kUsbTimeout);
-  if (e == LIBUSB_SUCCESS) {
-    if (transferred < read_size) {
+  do {
+    e = usb_messenger_->bulk_transfer(endpoint_bulk_in_, img_buf, read_size, transferred, kUsbTimeout);
+    if (e < 0) {
+      LOG(ERROR) << "Stream read 2 error " << platform::kUsbStatus2String.at(e);
+      break;
+    }
+    if (e == LIBUSB_SUCCESS) {
       read_length += transferred;
       read_size -= transferred;
       img_buf += transferred;
-      goto bulk_transfer;
     }
-    read_length += transferred;
-  } else if (e < 0) {
-    LOG(ERROR) << "Stream read 2 error " << platform::kUsbStatus2String.at(e);
-  }
+  } while (transferred < read_size);
 
   return static_cast<platform::UsbStatus>(e);
 }
@@ -250,7 +249,7 @@ platform::UsbStatus GeminiDevice::stream_read(platform::UsbCommonPack &response)
 platform::UsbStatus GeminiDevice::reset_usb_endpoint() {
   int ret;
   unsigned char buf[16];
-  auto *comm_pack = (platform::UsbCommonPack *) buf;
+  auto *comm_pack = (platform::UsbCommonPackHead *) buf;
   ret = control_transfer_in(platform::UsbCommand::RESET_USB_EDP, 0, comm_pack, sizeof(buf));
   if (ret < 0) {
     return platform::UsbStatus::SE2_USB_STATUS_OTHER;

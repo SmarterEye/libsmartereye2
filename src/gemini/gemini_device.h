@@ -45,16 +45,16 @@ class GeminiDevice : public DevicePrivate {
   platform::SeUsbEndpoint endpoint_bulk_out_, endpoint_bulk_in_;
 
   // for sync get
-  platform::UsbStatus control_transfer_in(int cmd, int index, platform::UsbCommonPack *response, int buffer_size);
-  platform::UsbStatus control_transfer_out(int cmd, int index, const platform::UsbCommonPack *request, int buffer_size);
+  platform::UsbStatus control_transfer_in(int cmd, int index, platform::UsbCommonPackHead *response, int buffer_size);
+  platform::UsbStatus control_transfer_out(int cmd, int index, const platform::UsbCommonPackHead *request, int buffer_size);
 
   std::mutex bulk_mutex_;
-  platform::UsbStatus bulk_request_response(const platform::UsbCommonPack &request,
-                                            platform::UsbCommonPack &response,
+  platform::UsbStatus bulk_request_response(const platform::UsbCommonPackHead &request,
+                                            platform::UsbCommonPackHead &response,
                                             size_t max_response_size,
                                             bool assert_success);
-  platform::UsbStatus stream_read(platform::UsbCommonPack &response);
-  platform::UsbStatus stream_write(const platform::UsbCommonPack &request);
+  platform::UsbStatus stream_read(platform::UsbCommonPackHead &response);
+  platform::UsbStatus stream_write(const platform::UsbCommonPackHead &request);
   platform::UsbStatus reset_usb_endpoint();
 
   friend class GeminiSensor;

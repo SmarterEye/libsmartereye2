@@ -50,8 +50,14 @@ FrameInterface *SyntheticSource::allocateCompositeFrame(std::vector<FrameHolder>
   auto composite_frame = dynamic_cast<CompositeFrameData *>(frame_interface);
   composite_frame->setFrameCount(holders.size());
 
+  for (auto &&f : holders) {
+    if (f.isBlocking()) {
+      frame_interface->setBlocking(true);
+    }
+  }
+
   auto frames = composite_frame->getFrames();
-  for (int i = 0; i < holders.size(); i++) {
+  for (int i = 0; i < req_size; i++) {
     frames[i] = nullptr;
     std::swap(frames[i], holders[i].frame);
   }

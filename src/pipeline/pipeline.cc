@@ -168,16 +168,13 @@ FrameCallbackPtr PipelinePrivate::getCallback(const std::vector<int>& synced_str
 
 std::vector<int> PipelinePrivate::onStart(const std::shared_ptr<PipelineProfilePrivate> &profile) {
   std::vector<int> streams_to_aggregate_ids;
-  std::vector<int> streams_to_sync_ids;   // unused
 
   for (auto &&s : profile->getActiveStreams()) {
     streams_to_aggregate_ids.push_back(s->uniqueId());
   }
 
-//  aggregator_ = std::make_unique<FrameAggregator>(streams_to_aggregate_ids, streams_to_sync_ids);  // c++ 14
-  aggregator_ = std::unique_ptr<FrameAggregator>(new FrameAggregator(
-      streams_to_aggregate_ids, streams_to_sync_ids
-  ));
+//  aggregator_ = std::make_unique<FrameAggregator>(streams_to_aggregate_ids);  // c++ 14
+  aggregator_ = std::unique_ptr<FrameAggregator>(new FrameAggregator(streams_to_aggregate_ids ));
   aggregator_->start();
 
   if (streams_callback_) {

@@ -155,9 +155,7 @@ void FrameData::release() {
 
 void FrameData::keep() {
   if (!kept_.exchange(true)) {
-    if (owner_) {
-      owner_->keep_frame(this);
-    }
+    owner_->keep_frame(this);
   }
 }
 
@@ -182,18 +180,6 @@ void CompositeFrameData::release() {
       }
     }
     owner_->unpublish_frame(this);
-  }
-}
-
-void CompositeFrameData::keep() {
-  if (!kept_.exchange(true)) {
-    auto frames = getFrames();
-    for (int i = 0; i < getFrameCount(); i++) {
-      if (frames[i]) {
-        frames[i]->keep();
-      }
-    }
-    owner_->keep_frame(this);
   }
 }
 

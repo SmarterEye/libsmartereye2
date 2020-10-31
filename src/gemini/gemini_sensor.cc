@@ -30,7 +30,7 @@ GeminiSensor::GeminiSensor(GeminiDevice *owner)
   profiles_ = initStreamProfiles();
   device_owner_->tagProfiles(profiles_);
 
-  frame_source_.set_max_publish_list_size(256);
+  frame_source_->set_max_publish_list_size(256);
   data_dispatcher_ = std::make_shared<Dispatcher>(256);
   data_dispatcher_->start();
 }
@@ -41,7 +41,7 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
   StreamProfiles results;
   uint8_t buf[BUFFER_SIZE] = {0};
 
-  auto *response = reinterpret_cast<platform::UsbCommonPack *>(buf);
+  auto *response = reinterpret_cast<platform::UsbCommonPackHead *>(buf);
   platform::UsbStatus ret = device_->control_transfer_in(platform::UsbCommand::QUERY_FRAME_CAP,
                                                          0, response, BUFFER_SIZE);
 
@@ -55,7 +55,8 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
       sizeof(platform::UsbFrameCapacity) + sizeof(platform::UsbFrameInfo) * frame_info_count
   );
   frame_capacity->supported_frame_count = frame_info_count;
-  memcpy(frame_capacity->frame_infos, response->frame_info, sizeof(platform::UsbFrameInfo) * frame_info_count);
+  auto pack_data = reinterpret_cast<platform::UsbCommonPackData *>(response->data);
+  memcpy(frame_capacity->frame_infos, pack_data->frame_info, sizeof(platform::UsbFrameInfo) * frame_info_count);
 
   supported_frame_infos_.clear();
   for (int i = 0; i < frame_capacity->supported_frame_count; i++) {
@@ -95,22 +96,21 @@ void GeminiSensor::open(const StreamProfiles &requests) {
     throw std::runtime_error("open(...) failed. Gemini device already opened!");
   }
 
-  frame_source_.init(metadata_parsers_);
-  frame_source_.set_sensor(shared_from_this());
+  frame_source_->init(metadata_parsers_);
+  frame_source_->set_sensor(shared_from_this());
 
   // set frame ids to device
-  FrameId request_frame_ids = //FrameId::NotUsed;
-      FrameId::LeftCamera | FrameId::RightCamera | FrameId::CalibLeftCamera | FrameId::CalibRightCamera;
-//  for (auto &&r : requests) {
-//    if (r->frameId() == FrameId::NotUsed) {
-//      LOG(ERROR) << "Requested wrong frame id!";
-//      continue;
-//    }
-//    request_frame_ids = request_frame_ids | r->frameId();
-//  }
+  FrameId request_frame_ids = FrameId::NotUsed;
+  for (auto &&r : requests) {
+    if (r->frameId() == FrameId::NotUsed) {
+      LOG(ERROR) << "Requested wrong frame id!";
+      continue;
+    }
+    request_frame_ids = request_frame_ids | r->frameId();
+  }
 
   uint8_t buf[BUFFER_SIZE] = {0};
-  auto *response = reinterpret_cast<platform::UsbCommonPack *>(buf);
+  auto *response = reinterpret_cast<platform::UsbCommonPackHead *>(buf);
   int ret = device_->control_transfer_in(platform::UsbCommand::SET_FRAME_IDS,
                                          static_cast<int>(request_frame_ids), response, BUFFER_SIZE);
   if (ret < 0) {
@@ -123,30 +123,20 @@ void GeminiSensor::open(const StreamProfiles &requests) {
                supported_frame_infos_.end(),
                std::back_inserter(active_frame_infos_),
                [request_frame_ids](const platform::UsbFrameInfo &frame_info) {
-//                 return frame_info.frame_id & static_cast<uint16_t>(request_frame_ids);
-                 FrameId frame_id = static_cast<FrameId>(frame_info.frame_id);
-                 return (frame_id == FrameId::LeftCamera || frame_id == FrameId::RightCamera
-                     || frame_id == FrameId::CalibLeftCamera || frame_id == FrameId::CalibRightCamera);
+                 return frame_info.frame_id & static_cast<uint16_t>(request_frame_ids);
                });
 
   memset(&usb_frame_group_, 0, sizeof usb_frame_group_);
-  for (size_t i = 0; i < active_frame_infos_.size(); i++) {
+  for (auto &active_frame_info : active_frame_infos_) {
     usb_frame_group_.frame_count++;
-    usb_frame_group_.total_size += active_frame_infos_.at(i).data_size;
-    usb_frame_group_.frame_infos[i] = &active_frame_infos_.at(i);
+    usb_frame_group_.total_size += active_frame_info.data_size; // only contains image bytes data
+
+    int index = active_frame_info.frame_index;  // ordered
+    usb_frame_group_.frame_infos[index] = &active_frame_info;
   }
 
   is_opened_ = true;
-
-  StreamProfiles used_profiles;
-  std::copy_if(requests.begin(),
-               requests.end(),
-               std::back_inserter(used_profiles),
-               [request_frame_ids](const std::shared_ptr<StreamProfileInterface> &profile) {
-                 return profile->frameId() & request_frame_ids;
-               });
-
-  setActiveStream(used_profiles);
+  setActiveStream(profiles_);
 }
 
 void GeminiSensor::close() {
@@ -174,7 +164,7 @@ void GeminiSensor::start(FrameCallbackPtr callback) {
     throw std::runtime_error("start(...) failed. Gemini device was not opened!");
   }
 
-  frame_source_.set_callback(callback);
+  frame_source_->set_callback(callback);
   startStream();
 }
 
@@ -191,23 +181,22 @@ void GeminiSensor::stop() {
 
 Intrinsics GeminiSensor::getIntrinsics() const {
   // TODO
-  return Intrinsics();
+  return {};
 }
 
 void GeminiSensor::dispatch_threaded(FrameHolder frame) {
   auto frame_holder_ptr = std::make_shared<FrameHolder>();
   *frame_holder_ptr = std::move(frame);
   data_dispatcher_->invoke([this, frame_holder_ptr](Dispatcher::CancellableTimer timer) {
-    frame_source_.invoke_callback(std::move(*frame_holder_ptr));
+    frame_source_->invoke_callback(std::move(*frame_holder_ptr));
   });
 }
 
 bool GeminiSensor::startStream() {
   is_streaming_ = true;
 
-  auto suitable_buffer_size = usb_frame_group_.total_size + sizeof(platform::UsbCommonPack) + sizeof(int64_t);
-  suitable_buffer_size += 1280 * 4; // for embededline
-
+  // [imbededline(1280, option) + timestamp(8) + image(..)]
+  auto suitable_buffer_size = usb_frame_group_.total_size + sizeof(platform::UsbCommonPackHead);  // over head
   buffer_.resize(suitable_buffer_size);
   std::fill(buffer_.begin(), buffer_.end(), 0);
 
@@ -215,28 +204,25 @@ bool GeminiSensor::startStream() {
     int ret = 0;
 
     while (is_streaming_) {
-      auto stream_response = (platform::UsbCommonPack *) buffer_.data();
+      auto stream_response = (platform::UsbCommonPackHead *) buffer_.data();
       ret = device_->stream_read(*stream_response);
       if (ret != 0) {
         LOG(ERROR) << "bulk_transer_in error: " << ret;
         continue;
-      } else {
-        LOG(INFO) << "nice!!!!!!!!!!!!!!!!!!!!!!!!";
       }
 
-      usb_frame_group_.timestamp = *((uint64_t *) stream_response->timestamp);
-      std::cout << "sizeof platform::UsbCommonPack" << sizeof(platform::UsbCommonPack);
+      auto pack_data = reinterpret_cast<platform::UsbCommonPackData *>(stream_response->data);
+      usb_frame_group_.timestamp = *((uint64_t *) pack_data->timestamp);
 
-      uint8_t *img_buf_ptr = buffer_.data() + sizeof(platform::UsbCommonPack);
+      LOG(INFO) << "received usb frame group, frame number: " << usb_frame_group_.frame_count
+                << ", timestamp: " << usb_frame_group_.timestamp;
+
+      uint8_t *img_buf_ptr = buffer_.data() + sizeof(platform::UsbCommonPackHead);
       for (int i = 0; i < usb_frame_group_.frame_count; i++) {
+        // parse data one by one
         auto frame_info = usb_frame_group_.frame_infos[i];
-        auto frame_id = static_cast<FrameId>(frame_info->frame_id);
         usb_frame_group_.frame_datas[i] = img_buf_ptr;
         img_buf_ptr += frame_info->data_size;
-        if (frame_id == FrameId::LeftCamera || frame_id == FrameId::RightCamera
-            || frame_id == FrameId::CalibLeftCamera || frame_id == FrameId::CalibRightCamera) {
-          img_buf_ptr += 1280;
-        }
       }
 
       handle_received_frames();
@@ -259,9 +245,7 @@ void GeminiSensor::handle_received_frames() {
     auto frame_id = static_cast<FrameId>(info->frame_id);
     auto frame_format = static_cast<FrameFormat>(info->frame_format);
     auto frame_index = info->frame_index;
-
     auto data_ptr = usb_frame_group_.frame_datas[i];
-    auto raw_frame = reinterpret_cast<RawFrame *>(data_ptr);
 
     auto profile = frame_id_to_profile_[static_cast<int>(frame_id)];
     if (profile == nullptr) {
@@ -269,18 +253,13 @@ void GeminiSensor::handle_received_frames() {
       continue;
     }
 
+    bool with_embededline = (frame_id == FrameId::LeftCamera || frame_id == FrameId::RightCamera
+        || frame_id == FrameId::CalibLeftCamera || frame_id == FrameId::CalibRightCamera);
+
     FrameExtension frame_ext;
     frame_ext.index = frame_index;
-
-    if (frame_id == FrameId::LeftCamera || frame_id == FrameId::RightCamera
-        || frame_id == FrameId::CalibLeftCamera || frame_id == FrameId::CalibRightCamera) {
-      frame_ext.metadata_value = FrameMetadataValue::EmbededLine;
-      frame_ext.metadata_blob.resize(sizeof(raw_frame->embededline));
-      frame_ext.metadata_blob.assign(raw_frame->embededline, raw_frame->embededline + sizeof(raw_frame->embededline));
-    }
-
-    FrameHolder frame_holder(frame_source_.alloc_frame(SeExtension::EXTENSION_VIDEO_FRAME,
-                                                         info->data_size, frame_ext, true));
+    FrameHolder frame_holder(frame_source_->alloc_frame(SeExtension::EXTENSION_VIDEO_FRAME,
+                                                        info->data_size, frame_ext, true));
     if (frame_holder.frame) {
       auto video = reinterpret_cast<VideoFrameData *>(frame_holder.frame);
       video->assign(info->width, info->height, 0, getBppByFormat(frame_format));
@@ -289,10 +268,20 @@ void GeminiSensor::handle_received_frames() {
       video->setStream(profile);
       video->setSensor(shared_from_this());
       video->data().resize(info->data_size, 0);
-      video->data().assign(raw_frame->image, raw_frame->image + info->data_size);
+      if (with_embededline) {
+        auto raw_frame_with_embededline = reinterpret_cast<RawUsbImageFrame4Embededline *>(data_ptr);
+        video->extension().metadata_value = FrameMetadataValue::EmbededLine;
+        video->extension().metadata_blob.resize(sizeof(raw_frame_with_embededline->embededline));
+        video->extension().metadata_blob.assign(raw_frame_with_embededline->image,
+                                                raw_frame_with_embededline->image + info->data_size);
+        video->data().assign(raw_frame_with_embededline->image, raw_frame_with_embededline->image + info->data_size);
+      } else {
+        auto raw_frame = reinterpret_cast<RawUsbImageFrame *>(data_ptr);
+        video->data().assign(raw_frame->image, raw_frame->image + info->data_size);
+      }
     } else {
-      LOG(INFO) << "Dropped frame. alloc_frame(...) returned nullptr";
-      return;
+      LOG(WARNING) << "Dropped frame. alloc_frame(...) returned nullptr";
+      continue;
     }
 
     dispatch_threaded(std::move(frame_holder));

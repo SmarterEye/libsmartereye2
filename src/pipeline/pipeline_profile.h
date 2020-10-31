@@ -37,7 +37,7 @@ class MultiStream;
 
 class PipelineProfilePrivate {
  public:
-  explicit PipelineProfilePrivate(const std::shared_ptr<DeviceInterface> dev, std::string file = "");
+  explicit PipelineProfilePrivate(std::shared_ptr<DeviceInterface> dev, std::string file = "");
 
   std::shared_ptr<DeviceInterface> getDevice();
   StreamProfiles getActiveStreams() const;
@@ -51,7 +51,7 @@ class PipelineProfilePrivate {
 
 class MultiStream {
  public:
-  MultiStream(const std::shared_ptr<DeviceInterface> dev);
+  MultiStream(const std::shared_ptr<DeviceInterface>& dev);
 
   void open();
   void close();

@@ -99,6 +99,7 @@ libsmartereye2::SensorBase::SensorBase(const std::string &name, libsmartereye2::
     : is_streaming_(false),
       is_opened_(false),
       metadata_parsers_(std::make_shared<MetadataParserMap>()),
+      frame_source_(new FrameSource),
       device_owner_(device) {
 
 }
@@ -122,11 +123,11 @@ StreamProfiles SensorBase::getActiveStreams() const {
 }
 
 FrameCallbackPtr SensorBase::getFramesCallback() const {
-  return frame_source_.get_callback();
+  return frame_source_->get_callback();
 }
 
 void SensorBase::setFramesCallback(FrameCallbackPtr cb) {
-  frame_source_.set_callback(cb);
+  frame_source_->set_callback(cb);
 }
 
 bool SensorBase::isStreaming() const {

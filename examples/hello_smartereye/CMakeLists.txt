@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.1.0)
 
 project(SmartereyeExamplesHelloSmartereye)
 
-set(OpenCV_DIR "D:/Program Files/opencv_341/build/install/x64/vc14/lib")
+if (WIN32)
+    set(OpenCV_DIR "D:/Program Files/opencv_341/build/install/x64/vc14/lib")
+else ()
+    set(OpenCV_DIR "/path/to/your/opencv/cmake/or/nothing")
+endif ()
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 

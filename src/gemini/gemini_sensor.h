@@ -25,12 +25,17 @@ class PlaybackDevice;
 struct UsbFrameGroup {
   int32_t frame_count;
   int32_t total_size;
-  platform::UsbFrameInfo *frame_infos[16];
-  uint8_t *frame_datas[16];
+  platform::UsbFrameInfo *frame_infos[15];
+  uint8_t *frame_datas[15];
   int64_t timestamp;
 };
 
-struct RawFrame {
+struct RawUsbImageFrame {
+  uint64_t timestamp;
+  uint8_t image[0];
+};
+
+struct RawUsbImageFrame4Embededline {
   uint8_t embededline[1280];
   uint64_t timestamp;
   uint8_t image[0];

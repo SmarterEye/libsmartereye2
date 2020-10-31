@@ -110,8 +110,6 @@ class CompositeFrameData : public FrameData {
 
   void release() override;
 
-  void keep() override;
-
   size_t getFrameCount() const { return frame_count_; }
 
   void setFrameCount(size_t count) { frame_count_ = count; }

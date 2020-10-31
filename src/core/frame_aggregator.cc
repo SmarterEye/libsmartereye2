@@ -23,8 +23,7 @@
 
 namespace libsmartereye2 {
 
-FrameAggregator::FrameAggregator(std::vector<int> streams_to_aggregate,
-                                 std::vector<int> &streams_to_sync)
+FrameAggregator::FrameAggregator(std::vector<int> streams_to_aggregate)
     : ProcessingBlock("Aggregator"),
       queue_(new ConsumerQueue<FrameHolder>(1)),
       streams_to_aggregate_ids_(std::move(streams_to_aggregate)),
@@ -90,7 +89,7 @@ void FrameAggregator::handleFrame(const FrameHolder& frame, SyntheticSourceInter
     }
     queue_->enqueue(sync_fref.clone());
   } else {
-    source->frameReady(frame.clone());
+//    source->frameReady(frame.clone());
     last_set_[frame->getStream()->uniqueId()] = frame.clone();
     if (last_set_.size() == streams_to_aggregate_ids_.size()) {
       std::vector<FrameHolder> sync_set;

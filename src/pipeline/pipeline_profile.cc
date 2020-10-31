@@ -51,7 +51,7 @@ StreamProfiles PipelineProfilePrivate::getActiveStreams() const {
   return stream_profiles;
 }
 
-MultiStream::MultiStream(const std::shared_ptr<DeviceInterface> dev) {
+MultiStream::MultiStream(const std::shared_ptr<DeviceInterface>& dev) {
   for (size_t i = 0; i < dev->getSensorCount(); i++) {
     sensors_.push_back(&dev->getSensor(i));
   }

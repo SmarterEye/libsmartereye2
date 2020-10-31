@@ -255,7 +255,8 @@ enum UsbMessageError {
   MESSAGE_ERR_SET_FRAMEIDS,
 };
 
-struct UsbCommonPack {
+#pragma pack(push, 1)
+struct UsbCommonPackHead {
   uint32_t magic;
   uint32_t pack_length;
   uint16_t cmd;
@@ -265,13 +266,17 @@ struct UsbCommonPack {
     int16_t raw_image_frame_count;
     int16_t frame_info_count;
   };
+  char data[0];
+};
 
+struct UsbCommonPackData {
   union {
     struct UsbFrameInfo frame_info[0];
     uint8_t raw_image_frame[0];
     int8_t timestamp[0];
   };
 };
+#pragma pack(pop)
 
 }  // namespace platform
 
