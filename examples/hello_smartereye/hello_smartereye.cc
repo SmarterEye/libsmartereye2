@@ -52,24 +52,25 @@ int main(int argc, char *argv[]) {
     cv::Mat ori_left_bgr(ori_left_yuv.rows, ori_left_yuv.cols, CV_8UC3);
     cv::cvtColor(ori_left_yuv, ori_left_bgr, cv::COLOR_YUV2BGR_YUYV); // yuv422
 
-//    // ori right
+    // ori right
     cv::Mat ori_right_mat(ori_right_gray.height(), ori_right_gray.width(), CV_8UC1, (void *) ori_right_gray.data());
 
     // calib left
-    cv::Mat calib_left_yuv
-        (calib_left_color.height(), calib_left_color.width(), CV_8UC2, (void *) (calib_left_color.data()));
+    cv::Mat calib_left_yuv(calib_left_color.height(), calib_left_color.width(), CV_8UC2,
+                           (void *) (calib_left_color.data()));
     cv::Mat calib_left_bgr(calib_left_yuv.rows, calib_left_yuv.cols, CV_8UC3);
     cv::cvtColor(calib_left_yuv, calib_left_bgr, cv::COLOR_YUV2BGR_UYVY); // yuv422p
 
     // calib right
-    cv::Mat calib_right_mat(calib_right_gray.height(), calib_right_gray.width(), CV_8UC1, (void *) calib_right_gray.data());
+    cv::Mat calib_right_mat(calib_right_gray.height(), calib_right_gray.width(), CV_8UC1,
+                            (void *) calib_right_gray.data());
 
     // disparity
     cv::Mat disparity_mat(disparity.height(), disparity.width(), CV_16U, (void *) disparity.data());
     cv::normalize(disparity_mat, disparity_mat, 0, 255, cv::NORM_MINMAX, CV_8U);
 
     // disparity_ds
-    cv::Mat disp_ds_mat(disp_ds.height(), disp_ds.width(), CV_16U, (void*)disp_ds.data());
+    cv::Mat disp_ds_mat(disp_ds.height(), disp_ds.width(), CV_16U, (void *) disp_ds.data());
     cv::normalize(disp_ds_mat, disp_ds_mat, 0, 255, cv::NORM_MINMAX, CV_8U);
 
     cv::imshow("ori_left", ori_left_bgr);

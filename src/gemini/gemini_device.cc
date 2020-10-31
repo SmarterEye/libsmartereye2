@@ -230,18 +230,22 @@ platform::UsbStatus GeminiDevice::stream_read(platform::UsbCommonPackHead &respo
   auto read_size = response.pack_length - transferred;
   img_buf += transferred;
 
-  do {
-    e = usb_messenger_->bulk_transfer(endpoint_bulk_in_, img_buf, read_size, transferred, kUsbTimeout);
-    if (e < 0) {
-      LOG(ERROR) << "Stream read 2 error " << platform::kUsbStatus2String.at(e);
-      break;
-    }
-    if (e == LIBUSB_SUCCESS) {
+  e = usb_messenger_->bulk_transfer(endpoint_bulk_in_, img_buf, read_size, transferred, kUsbTimeout);
+  if (e == LIBUSB_SUCCESS) {
+    while (transferred < read_size) {
       read_length += transferred;
       read_size -= transferred;
       img_buf += transferred;
+
+      e = usb_messenger_->bulk_transfer(endpoint_bulk_in_, img_buf, read_size, transferred, kUsbTimeout);
+      if (e < 0) {
+        LOG(ERROR) << "Stream read 2 error " << platform::kUsbStatus2String.at(e);
+        break;
+      }
     }
-  } while (transferred < read_size);
+  } else {
+    LOG(ERROR) << "Stream read 2 error " << platform::kUsbStatus2String.at(e);
+  }
 
   return static_cast<platform::UsbStatus>(e);
 }
