@@ -37,12 +37,6 @@ class UsbMessenger {
 
   int reset_endpoint(const SeUsbEndpoint &endpoint, uint32_t timeout_ms);
 
-//  int submit_request(const SeUsbRequest &request);
-//
-//  int cancel_request(const SeUsbRequest &request);
-//
-//  SeUsbRequest create_request(const SeUsbEndpoint& endpoint);
-
  private:
   const std::shared_ptr<UsbDevice> device_;
   std::mutex mutex_;

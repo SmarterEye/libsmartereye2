@@ -23,7 +23,7 @@
 
 #include "easylogging++.h"
 
-#include "context/context.hpp"
+#include "smartereye2/device/context.hpp"
 #include "device/device_list.hpp"
 #include "se_types.hpp"
 

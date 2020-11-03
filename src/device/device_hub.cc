@@ -20,7 +20,7 @@
 #include "device/device_hub.hpp"
 
 #include <memory>
-#include "context/context.hpp"
+#include "smartereye2/device/context.hpp"
 
 namespace libsmartereye2 {
 

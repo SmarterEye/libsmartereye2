@@ -14,7 +14,7 @@
 
 #include "gemini_device.h"
 #include "gemini_sensor.h"
-#include "usb/usb_foo.h"
+#include "usb/usb_enumerator.h"
 #include "easylogging++.h"
 
 #include <utility>
@@ -37,7 +37,7 @@ GeminiDevice::GeminiDevice(std::shared_ptr<ContextPrivate> ctx,
     : DevicePrivate(std::move(ctx), group, register_device_notifications) {
   LOG(DEBUG) << "Creating a Gemini device";
 
-  usb_device_ = platform::UsbFoo::createUsbDevcie(group.usb_devices[0]);
+  usb_device_ = platform::UsbEnumerator::createUsbDevcie(group.usb_devices[0]);
   if (!usb_device_) {
     LOG(ERROR) << "Unable to create USB device";
   }

@@ -1,6 +1,6 @@
 target_sources(${LSE2_TARGET}
         PRIVATE
-        "${CMAKE_CURRENT_LIST_DIR}/usb_foo.h"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_enumerator.h"
         "${CMAKE_CURRENT_LIST_DIR}/command_transfer.h"
         "${CMAKE_CURRENT_LIST_DIR}/usb_context.h"
         "${CMAKE_CURRENT_LIST_DIR}/usb_device.h"
@@ -11,7 +11,7 @@ target_sources(${LSE2_TARGET}
         "${CMAKE_CURRENT_LIST_DIR}/usb_request.h"
         "${CMAKE_CURRENT_LIST_DIR}/usb_types.h"
 
-        "${CMAKE_CURRENT_LIST_DIR}/usb_foo.cc"
+        "${CMAKE_CURRENT_LIST_DIR}/usb_enumerator.cc"
         "${CMAKE_CURRENT_LIST_DIR}/usb_context.cc"
         "${CMAKE_CURRENT_LIST_DIR}/usb_device.cc"
         "${CMAKE_CURRENT_LIST_DIR}/usb_handle.cc"

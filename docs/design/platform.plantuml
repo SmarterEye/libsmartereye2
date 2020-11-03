@@ -1,0 +1,138 @@
+@startuml
+
+namespace platform {
+
+class Backend {
+  virtual std::shared_ptr<CommandTransfer> createUsbDevice(UsbDeviceInfo info) const = 0;
+  virtual std::vector<UsbDeviceInfo> queryUsbDevices() const = 0;
+  virtual std::shared_ptr<platform::TimeService> createTimeService() const = 0;
+  virtual std::shared_ptr<DeviceWather> createDeviceWatcher() const = 0;
+  virtual std::string getDeviceSerial(uint16_t device_vid, uint16_t device_pid, const std::string &device_uid) const;
+}
+
+Backend <|-- RecordBackend
+class RecordBackend  {
+    TODO
+}
+
+Backend <|-- PlaybackBackend
+class PlaybackBackend {
+    TODO
+}
+
+Backend <|-- StandardBackend
+class StandardBackend {
+    StandardBackend();
+    std::shared_ptr<CommandTransfer> createUsbDevice(UsbDeviceInfo info) const override;
+    std::vector<UsbDeviceInfo> queryUsbDevices() const override;
+    std::shared_ptr<platform::TimeService> createTimeService() const override;
+    std::shared_ptr<DeviceWather> createDeviceWatcher() const override;
+    std::chrono::high_resolution_clock::time_point start_time_point_;
+}
+
+class UsbDevice {
+  UsbDevice(libusb_device *device,
+            const libusb_device_descriptor &desc,
+            UsbDeviceInfo info,
+            std::shared_ptr<UsbContext> context);
+
+  UsbDeviceInfo getInfo() const;
+  std::vector<SeUsbInterface> getInterfaces() const;
+  SeUsbInterface getInterface(uint8_t interface_number) const;
+  SeUsbMessenger open(uint8_t interface_number);
+  const std::vector<UsbDescriptor> get_descriptors() const;
+}
+
+class UsbEndpoint {
+  UsbEndpoint(libusb_endpoint_descriptor desc, uint8_t interface_number);
+  uint8_t getAddress() const;
+  EndpointType getType() const;
+  uint8_t getInterfaceNumber() const;
+  EndpointDirection getDirection() const;
+  libusb_endpoint_descriptor getDescriptor();
+
+  libusb_endpoint_descriptor endpoint_descriptor_;
+  uint8_t interface_number_;
+}
+
+class UsbInterface {
+  explicit UsbInterface(const libusb_interface *interface);
+  uint8_t getNumber() const;
+  uint8_t getClass() const;
+  uint8_t getSubclass() const;
+  std::vector<SeUsbEndpoint> getEndpoints() const;
+  SeUsbEndpoint firstEndpoint(EndpointDirection direction,
+                              EndpointType type = EndpointType::SE2_USB_ENDPOINT_BULK) const;
+  std::vector<SeUsbInterface> getAssociatedInterfaces() const;
+  void addAssociatedInterface(const SeUsbInterface &interface);
+
+  libusb_interface_descriptor usb_desc_;
+  std::vector<std::shared_ptr<UsbEndpoint>> endpoints_;
+  std::vector<SeUsbInterface> associated_interfaces_;
+}
+
+
+class UsbMessenger {
+  UsbMessenger(const std::shared_ptr<UsbDevice> &device, std::shared_ptr<UsbHandle> handle);
+  int control_transfer(int request_type, int request, int value, int index,
+                       uint8_t *buffer, uint32_t length, uint32_t &transferred, uint32_t timeout_ms);
+  int bulk_transfer(const SeUsbEndpoint &endpoint, uint8_t *buffer,
+                    uint32_t length, uint32_t &transferred, uint32_t timeout_ms);
+  int reset_endpoint(const SeUsbEndpoint &endpoint, uint32_t timeout_ms);
+
+  const std::shared_ptr<UsbDevice> device_;
+  std::mutex mutex_;
+  std::shared_ptr<UsbHandle> handle_;
+}
+
+class UsbRequest {
+  UsbRequest(libusb_device_handle *dev_handle, SeUsbEndpoint endpoint);
+
+  SeUsbEndpoint get_endpoint() const；
+  int get_actual_length() const；
+  void set_callback(const SeUsbRequestCallback &callback)；
+  SeUsbRequestCallback get_callback() const；
+  void set_client_data(void *data)；
+  void *get_client_data() const；
+  void *get_native_request() const；
+  const std::vector<uint8_t> &get_buffer() const；
+  void set_buffer(const std::vector<uint8_t> &buffer);
+
+  std::shared_ptr<UsbRequest> get_shared() const；
+  void set_shared(const std::shared_ptr<UsbRequest> &shared)；
+  void set_active(bool state)；
+
+  void set_native_buffer_length(int length)；
+  int get_native_buffer_length() const；
+  void set_native_buffer(uint8_t *buffer)；
+  uint8_t *get_native_buffer() const；
+
+  void *client_data_;
+  SeUsbRequest request_;
+  SeUsbEndpoint endpoint_;
+  std::vector<uint8_t> buffer_;
+  SeUsbRequestCallback callback_;
+
+  bool active_ = false;
+  std::weak_ptr<UsbRequest> shared_;
+  std::shared_ptr<libusb_transfer> transfer_;
+}
+
+UsbMessenger -[hidden]- UsbRequest
+
+class UsbHandle {
+  UsbHandle(std::shared_ptr<UsbContext> context,
+            libusb_device *device, const std::shared_ptr<UsbInterface>& interface);
+
+  libusb_device_handle *get() const;
+  void claim_interface_or_throw(uint8_t interface);
+  int claim_interface(uint8_t interface_number);
+
+  std::shared_ptr<UsbContext> _context;
+  std::shared_ptr<UsbInterface> _first_interface;
+  libusb_device_handle *_handle;
+}
+
+}
+
+@enduml

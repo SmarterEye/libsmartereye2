@@ -17,7 +17,7 @@
 
 #include "pipeline_profile.hpp"
 #include "se_types.hpp"
-#include "context/context.hpp"
+#include "device/context.hpp"
 
 namespace se2 {
 

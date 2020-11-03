@@ -5,13 +5,12 @@ target_sources(${LSE2_TARGET}
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/se_types.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/se_util.hpp"
 
-        "${CMAKE_CURRENT_LIST_DIR}/smartereye2/context/context.hpp"
-
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/core/core_types.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/core/frame.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/core/frame_set.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/core/options.hpp"
 
+        "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/context.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/device.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/device_hub.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/device_list.hpp"

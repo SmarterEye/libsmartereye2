@@ -73,7 +73,6 @@ class SMARTEREYE2_API Sensor : public Options {
 
   std::vector<StreamProfile> getStreamProfiles() const;
   std::vector<StreamProfile> getActiveStreams() const;
-//  std::vecotr<Filter> getRecommendedFilters() const;
 
  private:
   std::shared_ptr<SeSensor> sensor_;

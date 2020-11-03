@@ -1,0 +1,500 @@
+@startuml
+
+class EventInfomation {
+  EventInfomation(DeviceList removed, DeviceList added);
+  bool wasRemoved(const Device &dev) const;
+  bool wasAdded(const Device &dev) const;
+  DeviceList getNewDevices() const;
+
+  DeviceList removed_;
+  DeviceList added_;
+}
+
+together {
+'SeDevicesChangedCallback <|-- DevicesChangedCallback
+interface DevicesChangedCallback <<T>> {
+    explicit DevicesChangedCallback(T callback);
+    void onDevicesChanged(SeDeviceList *removed, SeDeviceList *added) override;
+    void release() override;
+
+    T callback_;
+}
+
+class Context {
+    Context();
+    explicit Context(std::shared_ptr<SeContext> context);
+    explicit operator std::shared_ptr<SeContext>() const;
+
+    DeviceList queryDevices() const;
+    DeviceList queryDevices(int mask) const;
+    std::vector<Sensor> queryAllSensors() const;
+    Device getSensorParent(const Sensor &sensor) const;
+
+    void setDevicesCahngedCallback(T callback);
+
+    std::shared_ptr<SeContext> context_;
+}
+
+class DeviceHub {
+    explicit DeviceHub(const Context &context);
+    explicit operator std::shared_ptr<SeDeviceHub>() { return device_hub_; }
+    explicit DeviceHub(std::shared_ptr<SeDeviceHub> hub) : device_hub_(std::move(hub)) {}
+    Device waitForDevice() const;
+    bool isConnected(const Device &dev) const;
+
+    std::shared_ptr<SeDeviceHub> device_hub_;
+}
+
+Context -[hidden]> DeviceHub
+}
+
+together {
+class Playback
+class Recorder
+class Device {
+  Device();
+  explicit Device(std::shared_ptr<SeDevice> dev);
+
+  explicit operator std::shared_ptr<SeDevice>() const;
+  explicit operator bool() const;
+  Device &operator=(std::shared_ptr<SeDevice> dev);
+  Device &operator=(const Device &dev);
+
+  std::vector<Sensor> querySensors() const;
+  bool supports(CameraInfo info) const;
+  std::string getInfo(CameraInfo info) const;
+  void hardwareReset();
+  T first() const;
+  bool is() const;
+  T as() const;
+  const std::shared_ptr<SeDevice> &get() const;
+
+  std::shared_ptr<SeDevice> device_;
+}
+
+hide device_list_iterator
+    class device_list_iterator   {
+        device_list_iterator(const device_list& device_list, uint32_t uint32_t)
+        device operator*() const
+        bool operator!=(const device_list_iterator& other) const
+        bool operator==(const device_list_iterator& other) const
+        device_list_iterator& operator++()
+        const device_list& _list;
+        uint32_t _index;
+    }
+
+class DeviceList {
+    explicit DeviceList(std::shared_ptr<SeDeviceList> list);
+    DeviceList();
+    explicit operator std::vector<Device>() const;
+    DeviceList &operator=(std::shared_ptr<SeDeviceList> list);
+    Device operator[](uint32_t index) const;
+    bool contains(const Device &dev) const;
+    int32_t size() const;
+    Device front() const;
+    Device back() const;
+    explicit operator std::shared_ptr<SeDeviceList>();
+    device_list_iterator begin() const;
+    device_list_iterator end() const;
+    const SeDeviceList *getList() const;
+
+    std::shared_ptr<SeDeviceList> list_;
+}
+
+}
+
+together {
+
+hide Frame member
+class Frame {
+    Frame();
+    explicit Frame(SeFrame *ref);
+    Frame(const Frame &other);
+    Frame(Frame &&other) noexcept;
+    Frame &operator=(Frame other);
+    explicit operator bool() const;
+    explicit operator SeFrame *();
+    void swap(Frame &other);
+    void keep();
+    SeSensor *getSensor() const;
+    StreamProfile getProfile() const;
+    double timestamp() const;
+    int64_t getFrameMetadata(FrameMetadataValue frame_metadata) const;
+    bool supportsFrameMetadata(FrameMetadataValue frame_metadata) const;
+    int64_t getFrameIndex() const;
+    size_t dataSize() const;
+    const char *data() const;
+    bool is() const;
+    T as() const;
+    SeFrame *get() const;
+    void addRef() const;
+    void reset();
+
+    SeFrame *frame_ref_;
+    StreamProfile profile_;
+    uint64_t frame_index_ = 0;
+}
+
+Frame <|-- VideoFrame
+class VideoFrame{
+    explicit VideoFrame(const Frame &frame);
+    int width() const;
+    int height() const;
+    int strideInBytes() const;
+    int bitsPerPixel() const;
+    int bytesPerPixel() const;
+}
+
+
+Frame <|-- Points
+class Points {
+    explicit Points();
+    explicit Points(const Frame &frame);
+    const Vertex *vertices() const;
+    const TextureCoordinate *textureCoordinate() const;
+    void exportToPly(const std::string &fnmae, VideoFrame texture) const;
+    size_t size() consta
+
+    size_t size_;
+}
+
+VideoFrame <|-- DepthFrame
+class DisparityFrame {
+    explicit DepthFrame(const Frame &frame);
+    float distance(int x, int y) const;
+    float units() const;
+}
+
+DepthFrame <|-- DisparityFrame
+class DisparityFrame {
+    explicit DisparityFrame(const Frame &frame);
+    float baseline() const;
+}
+
+Frame <|-- MotionFrame
+class MotionFrame {
+    explicit MotionFrame(const Frame &frame);
+    SeVector3f getMotionData() const;
+}
+
+
+Frame <|-- FrameSet
+class FrameSet {
+    FrameSet();
+    explicit FrameSet(const Frame &frame);
+    Frame operator[](size_t index) const;
+    VideoFrame operator[](FrameId frame_id) const;
+    Frame firstOrDefault(FrameId frame_id, FrameFormat format = FrameFormat::Any) const;
+    Frame first(FrameId frame_id, FrameFormat format = FrameFormat::Any) const;
+    VideoFrame getVideoFrame(FrameId frame_id) const;
+    DepthFrame getDepthFrame() const;
+    size_t size() const;
+    iterator begin() const;
+    iterator end() const;
+
+    size_t size_;
+}
+
+SeFrameCallback <|-- FramCallback
+class FramCallback {
+  T on_frame_function_;
+
+  explicit FramCallback(T on_frame) : on_frame_function_(on_frame) {}
+  void onFrame(SeFrame *frame) override {}
+  void release() override { delete this; }
+}
+
+class FrameQueue {
+  explicit FrameQueue(uint32_t capacity, bool keep_frames = false);
+  FrameQueue();
+  void operator()(Frame frame);
+  void enqueue(Frame frame);
+  Frame waitForFrame(int32_t timeout_ms = 5000) const;
+  bool pollForFrame(T *output) const;
+  bool tryWaitForFrame(T *output, uint32_t timeout_ms = 5000) const;
+
+  size_t capacity() const { return capacity_; }
+  bool keepFrames() const { return keep_; }
+
+  std::shared_ptr<SeFrameQueue> queue_;
+  size_t capacity_;
+  bool keep_;
+}
+
+}
+
+together {
+class StreamProfile {
+  StreamProfile();
+  explicit StreamProfile(SeStreamProfile *profile);
+  explicit operator const SeStreamProfile *();
+  explicit operator bool() const;
+  bool operator==(const StreamProfile &rhs) const;
+  const SeStreamProfile *get() const;
+  int32_t index() const;
+  int32_t uniqueId() const;
+  FrameId frameId() const;
+  FrameFormat format() const;
+  uint32_t fps() const;
+  void setIndex(int32_t index);
+  void setUniqueId(int32_t uid);
+  void setFrameId(FrameId frame_id);
+  void setFormat(FrameFormat format);
+  void setFrameRate(uint32_t fps);
+  Extrinsics getExtrinsicsTo(const StreamProfile &to) const;
+  void registerExtrinsicsTo(const StreamProfile &to, Extrinsics extrinsics);
+  bool is() const;
+  T as() const;
+
+  std::shared_ptr<SeStreamProfile> profile_;
+  int index_ = 0;
+  int uid_ = 0;
+  int frame_rete_ = 0;
+  FrameFormat format_ = FrameFormat::Any;
+  FrameId frame_id_ = FrameId::NotUsed;
+}
+
+StreamProfile <|-- VideoStreamProfile
+class VideoStreamProfile {
+  explicit VideoStreamProfile(const StreamProfile &sp);
+  StreamProfile clone(FrameId frame_id, int32_t index, FrameFormat format,
+                      int width, int height, const Intrinsics &intr) const;
+  int width() const;
+  int height() const;
+  Intrinsics getIntrinsics() const;
+
+  int width_;
+  int height_;
+}
+
+StreamProfile <|-- MotionStreamProfile
+class MotionStreamProfile {
+  explicit MotionStreamProfile(const StreamProfile &sp);
+  MotionDeviceIntrinsics getMotionIntrinsics() const;
+}
+
+class PipelineProfile {
+  PipelineProfile();
+  explicit PipelineProfile(std::shared_ptr<SePipelineProfile> profile);
+  explicit operator bool() const;
+  explicit operator std::shared_ptr<SePipelineProfile>();
+  std::vector<StreamProfile> getStreams() const;
+  StreamProfile getStream(FrameId frame_id, int index = -1) const;
+  Device getDevice() const;
+
+  std::shared_ptr<SePipelineProfile> pipeline_profile_;
+}
+
+class PipelineConfig {
+  PipelineConfig();
+  void enableStream(FrameId frame_id,
+                    int index,
+                    uint32_t width,
+                    uint32_t height,
+                    FrameFormat format,
+                    uint32_t framerate);
+  void enableStream(FrameId frame_id,
+                    int width,
+                    int height,
+                    FrameFormat format = FrameFormat::Any,
+                    int framerate = 0);
+  void enableStream(FrameId frame_id, int stream_index = -1);
+  void enableStream(FrameId frame_id, FrameFormat format, int framerate = 0);
+  void enableStream(FrameId frame_id, int stream_index, FrameFormat format, int framerate = 0);
+  void enableAllStreams();
+  void enableDevice(const std::string &serial);
+  void enableDeviceFromFile(const std::string &file, bool repeat_playback);
+  void disableStream(FrameId frame_id, int index = -1);
+  void disableAllStreams();
+  PipelineProfile resolve(std::shared_ptr<SePipeline> pipeline) const;
+  bool canResolve(std::shared_ptr<SePipeline> pipeline) const;
+  std::shared_ptr<SePipelineConfig> get() const;
+  explicit operator std::shared_ptr<SePipelineConfig>() const;
+
+  std::shared_ptr<SePipelineConfig> config_;
+}
+
+class Pipeline {
+  explicit Pipeline(const Context& context = Context());
+  PipelineProfile start();
+  PipelineProfile start(const PipelineConfig &config);
+  PipelineProfile start(T callback);
+  PipelineProfile start(const PipelineConfig &config, T callback);
+  void stop();
+  FrameSet waitForFrames(uint32_t timeout_ms = 15000) const;
+  bool pollForFrames(FrameSet *frame_set) const;
+  bool tryWaitForFrames(FrameSet *frame_set, uint32_t timeout_ms = 15000) const;
+  PipelineProfile getActiveProfile();
+  operator std::shared_ptr<SePipeline>() const;
+  explicit Pipeline(std::shared_ptr<SePipeline> pipeline);
+
+  std::shared_ptr<SePipeline> pipeline_;
+}
+
+Pipeline <-[hidden]up- PipelineConfig
+Frame <-[hidden]left-- StreamProfile
+}
+
+' class Vertex {
+'   float x, y, z;
+'   explicit operator const float *() const;
+' }
+
+' class TextureCoordinate {
+'   float u, v;
+'   explicit operator const float *() const;
+' }
+
+
+together {
+class Options {
+  bool supports(OptionKey option) const;
+  std::string getOptionDescription(OptionKey option) const;
+  std::string getOptionName(OptionKey option) const;
+  std::string getOptionValueDescription(OptionKey option, float val) const;
+  float getOption(OptionKey option) const;
+  OptionRange getOptionRange(OptionKey option) const;
+  void setOption(OptionKey option, float value) const;
+  bool isOptionReadonly(OptionKey option) const;
+  std::vector<OptionKey> getSupportedOptions() const;
+  Options &operator=(const Options &other);
+  Options(const Options &other) : options_(other.options_) {}
+  explicit Options(SeOptions *opt = nullptr) : options_(opt) {}
+  Options &operator=(const T &dev);
+
+  SeOptions *options_;
+}
+
+SeFrameProcessorCallback <|-- FrameProcessorCallback
+class FrameProcessorCallback <<T>> {
+    explicit FrameProcessorCallback(T on_frame);
+    void onFrame(SeFrame *frame, SeSyntheticSource *source) override;
+    void release() override;
+    T on_frame_function_;
+}
+
+class FilterInterface {
+    virtual Frame process(Frame frame) const = 0;
+}
+
+Options <|-- ProcessingBlock
+class ProcessingBlock {
+    explicit ProcessingBlock(const std::shared_ptr<SeProcessingBlock> &block);
+    explicit ProcessingBlock(S processing_func);
+    explicit operator SeOptions *() const;
+    virtual SeProcessingBlock *get() const;
+    void start(S on_frame) {}
+    S &operator>>(S &on_frame) {}
+    void invoke(Frame frame) const;
+    bool support(CameraInfo info) const;
+    std::string getInfo(CameraInfo info) const;
+    void registerSimpleOption(OptionKey option_key, OptionRange range);
+
+    std::shared_ptr<SeProcessingBlock> block_;
+}
+
+ProcessingBlock <|-- Filter
+FilterInterface <|-- Filter
+class Filter {
+    explicit Filter(const std::shared_ptr<SeProcessingBlock> &block, uint32_t queue_size = 1);
+    explicit Filter(S processing_func, uint32_t queue_size = 1);
+    Frame process(Frame frame) const override;
+    FrameQueue getQueue() const;
+    SeProcessingBlock *get() const override
+    bool is<<T>>() const
+    T as<<T>>() const
+    operator bool() const
+
+    FrameQueue queue_;
+}
+
+SePlaybackChangedCallback <|-- StatusChangedCallback
+class StatusChangedCallback<<T>>  {
+    T on_status_changed_function_;
+    explicit StatusChangedCallback(T on_status_changed)
+    void onPlaybackStatusChanged(PlaybackStatus status) override
+    void release() override 
+}
+
+Device <|-- Playback
+class Playback {
+    explicit Playback(Device device) {}
+    void pause();
+    void resume();
+    void stop();
+    void seek();
+    std::string fileName() const;
+    uint64_t position() const;
+    std::chrono::nanoseconds duration() const;
+    bool isRealTime() const;
+    void setRealTime(bool is_real_time);
+    void setPlaybackSpeed(float speed);
+    void setStatusChangedCallback();
+    PlaybackStatus currentStatus() const;
+    explicit Playback(std::shared_ptr<SeDevice> dev);
+
+    std::string file_;
+}
+
+Device <|-- Recorder
+class Recorder  {
+    explicit Recorder(const Device& device);
+    Recorder(const std::string &file, const Device& dev);
+    explicit Recorder(std::shared_ptr<SeDevice> dev)
+}
+
+}
+
+together {
+Options <|-- Sensor
+class Sensor  {
+    Sensor() : sensor_(nullptr);
+    explicit Sensor(const std::shared_ptr<SeSensor> &dev);
+    explicit operator std::shared_ptr<SeSensor>();
+    Sensor &operator=(const std::shared_ptr<SeSensor> &other);
+    Sensor &operator=(const Sensor &other);
+    explicit operator bool() const;
+    const std::shared_ptr<SeSensor> &get() const;
+    bool is<<T>>() const
+    T as<<T>>() const
+    bool supports(CameraInfo info) const;
+    std::string getInfo(CameraInfo info) const;
+    void open(const StreamProfile &profile) const;
+    void open(const std::vector<StreamProfile> &profiles) const;
+    void close() const;
+    void setNotificationCallback(T callback) const;
+    void start(T callback) const;
+    void stop() const;
+    std::vector<StreamProfile> getStreamProfiles() const;
+    std::vector<StreamProfile> getActiveStreams() const;
+    std::shared_ptr<SeSensor> sensor_;
+}
+
+Sensor <|-- ColorSensor
+class ColorSensor  {
+    TODO
+}
+
+Sensor <|-- MotionSensor
+class MotionSensor  {
+    TODO
+}
+
+Sensor <|-- RoiSensor
+class RoiSensor  {
+    TODO
+}
+
+Sensor <|-- DepthSensor
+class DepthSensor  {
+    TODO
+}
+
+DepthSensor <|-- DepthStereoSensor
+class DepthStereoSensor  {
+    TODO
+}
+
+}
+
+@enduml

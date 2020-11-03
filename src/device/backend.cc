@@ -14,7 +14,7 @@
 
 #include "backend.h"
 
-#include "usb/usb_foo.h"
+#include "usb/usb_enumerator.h"
 
 namespace libsmartereye2 {
 namespace platform {
@@ -43,7 +43,7 @@ StandardBackend::~StandardBackend() {
 }
 
 std::shared_ptr<CommandTransfer> StandardBackend::createUsbDevice(UsbDeviceInfo info) const {
-  auto dev = UsbFoo::createUsbDevcie(info);
+  auto dev = UsbEnumerator::createUsbDevcie(info);
   if (dev) {
     return std::make_shared<UsbCommandTransfer>(dev);
   }
@@ -51,7 +51,7 @@ std::shared_ptr<CommandTransfer> StandardBackend::createUsbDevice(UsbDeviceInfo 
 }
 
 std::vector<UsbDeviceInfo> StandardBackend::queryUsbDevices() const {
-  auto device_infos = UsbFoo::queryDevicesInfo();
+  auto device_infos = UsbEnumerator::queryDevicesInfo();
 
 //  if (tm_boot(device_infos)) {
 //    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
