@@ -21,6 +21,8 @@
 #include "device/backend.h"
 #include "streaming/stream_types.hpp"
 
+using namespace se2;
+
 namespace libsmartereye2 {
 
 enum ProfileTag {

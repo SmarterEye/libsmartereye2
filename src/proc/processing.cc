@@ -82,9 +82,4 @@ void ProcessingBlock::registerSimpleOption(OptionKey option_key, OptionRange ran
   dynamic_cast<libsmartereye2::OptionsContainer *>(block_->options)->registerOption(option_key, foo);
 }
 
-std::shared_ptr<SeProcessingBlock> AsynchronousSyncer::init() {
-  auto block = std::make_shared<libsmartereye2::SyncerProcessUnit>();
-  return std::make_shared<SeProcessingBlock>(block);
-}
-
 }  // namespace se2

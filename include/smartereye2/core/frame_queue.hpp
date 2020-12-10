@@ -15,7 +15,7 @@
 #ifndef LIBSMARTEREYE2_FRAME_QUEUE_HPP
 #define LIBSMARTEREYE2_FRAME_QUEUE_HPP
 
-#include "se_types.hpp"
+#include "smartereye2/se_types.hpp"
 
 namespace se2 {
 

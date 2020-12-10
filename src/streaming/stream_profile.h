@@ -26,6 +26,8 @@ struct SeStreamProfile {
   libsmartereye2::StreamProfileInterface *profile;
 };
 
+using namespace se2;
+
 namespace libsmartereye2 {
 
 class StreamProfileInterface : public StreamInterface {

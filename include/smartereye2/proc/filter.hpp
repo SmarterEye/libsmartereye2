@@ -18,8 +18,8 @@
 #include <utility>
 
 #include "processing.hpp"
-#include "core/frame_queue.hpp"
-#include "streaming/stream_types.hpp"
+#include "smartereye2/core/frame_queue.hpp"
+#include "smartereye2/streaming/stream_types.hpp"
 
 namespace se2 {
 

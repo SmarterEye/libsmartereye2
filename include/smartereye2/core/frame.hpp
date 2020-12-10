@@ -15,11 +15,11 @@
 #ifndef LIBSMARTEREYE2_FRAME_HPP
 #define LIBSMARTEREYE2_FRAME_HPP
 
-#include "se_global.hpp"
 #include "core_types.hpp"
-#include "se_types.hpp"
-#include "se_callbacks.hpp"
-#include "streaming/stream_profile.hpp"
+#include "smartereye2/se_global.hpp"
+#include "smartereye2/se_types.hpp"
+#include "smartereye2/se_callbacks.hpp"
+#include "smartereye2/streaming/stream_profile.hpp"
 
 namespace se2 {
 

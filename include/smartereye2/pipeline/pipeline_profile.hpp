@@ -15,8 +15,8 @@
 #ifndef LIBSMARTEREYE2_PIPELINE_PROFILE_HPP
 #define LIBSMARTEREYE2_PIPELINE_PROFILE_HPP
 
-#include "se_types.hpp"
-#include "streaming/stream_types.hpp"
+#include "smartereye2/se_types.hpp"
+#include "smartereye2/streaming/stream_types.hpp"
 
 namespace se2 {
 

@@ -19,6 +19,8 @@
 #include "concurrency/consumer_queue.h"
 #include "streaming/stream_types.hpp"
 
+using namespace se2;
+
 namespace libsmartereye2 {
 
 class SyncerLock {

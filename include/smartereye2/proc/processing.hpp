@@ -15,10 +15,10 @@
 #ifndef LIBSMARTEREYE2_PROCESSING_HPP
 #define LIBSMARTEREYE2_PROCESSING_HPP
 
-#include "core/options.hpp"
-#include "core/frame.hpp"
-#include "core/frame_queue.hpp"
-#include "core/frame_set.hpp"
+#include "smartereye2/core/options.hpp"
+#include "smartereye2/core/frame.hpp"
+#include "smartereye2/core/frame_queue.hpp"
+#include "smartereye2/core/frame_set.hpp"
 
 namespace se2 {
 

@@ -19,6 +19,8 @@
 
 #include <map>
 
+namespace se2 {
+
 enum class FrameId : int {
   NotUsed = 0,
   LeftCamera = 1 << 0,
@@ -77,6 +79,8 @@ static int getBppByFormat(FrameFormat format) {
   }
   return 0;
 }
+
+}  // namespace se2
 
 #endif //LIBSMARTEREYE2_STREAM_TYPES_HPP
 

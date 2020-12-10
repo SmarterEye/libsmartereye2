@@ -15,9 +15,9 @@
 #ifndef LIBSMARTEREYE2_STREAM_PROFILE_HPP
 #define LIBSMARTEREYE2_STREAM_PROFILE_HPP
 
-#include "se_global.hpp"
 #include "stream_types.hpp"
-#include "device/device_types.hpp"
+#include "smartereye2/se_global.hpp"
+#include "smartereye2/device/device_types.hpp"
 
 namespace se2 {
 

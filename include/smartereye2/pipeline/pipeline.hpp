@@ -16,8 +16,8 @@
 #define LIBSMARTEREYE2_PIPELINE_HPP
 
 #include "pipeline_profile.hpp"
-#include "se_types.hpp"
-#include "device/context.hpp"
+#include "smartereye2/se_types.hpp"
+#include "smartereye2/device/context.hpp"
 
 namespace se2 {
 

@@ -15,7 +15,7 @@
 #ifndef LIBSMARTEREYE2_DEVICE_LIST_HPP
 #define LIBSMARTEREYE2_DEVICE_LIST_HPP
 
-#include "se_types.hpp"
+#include "smartereye2/se_types.hpp"
 #include "device.hpp"
 
 namespace se2 {

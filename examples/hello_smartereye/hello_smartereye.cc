@@ -16,6 +16,8 @@
 #include <smartereye2/pipeline/pipeline.hpp>
 #include <opencv2/opencv.hpp>
 
+using namespace se2;
+
 int main(int argc, char *argv[]) {
   // Create a Pipeline - this serves as a top-level API for streaming and processing frames
   se2::Pipeline p;
@@ -81,6 +83,8 @@ int main(int argc, char *argv[]) {
     cv::imshow("disp_ds", disp_ds_mat);
 
     k = cv::waitKey(40);
+
+
   }
 
   p.stop();

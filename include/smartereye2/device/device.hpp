@@ -17,8 +17,8 @@
 
 #include <utility>
 
-#include "sensor/sensor.hpp"
-#include "se_types.hpp"
+#include "smartereye2/sensor/sensor.hpp"
+#include "smartereye2/se_types.hpp"
 
 namespace se2 {
 

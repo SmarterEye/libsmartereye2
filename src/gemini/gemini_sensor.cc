@@ -214,8 +214,8 @@ bool GeminiSensor::startStream() {
       auto pack_data = reinterpret_cast<platform::UsbCommonPackData *>(stream_response->data);
       usb_frame_group_.timestamp = *((uint64_t *) pack_data->timestamp);
 
-      LOG(INFO) << "received usb frame group, frame number: " << usb_frame_group_.frame_count
-                << ", timestamp: " << usb_frame_group_.timestamp;
+//      LOG(INFO) << "received usb frame group, frame number: " << usb_frame_group_.frame_count
+//                << ", timestamp: " << usb_frame_group_.timestamp;
 
       uint8_t *img_buf_ptr = buffer_.data() + sizeof(platform::UsbCommonPackHead);
       for (int i = 0; i < usb_frame_group_.frame_count; i++) {

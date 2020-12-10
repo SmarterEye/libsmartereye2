@@ -19,9 +19,9 @@
 #include <utility>
 #include <vector>
 
-#include "se_global.hpp"
-#include "se_types.hpp"
-#include "core/options.hpp"
+#include "smartereye2/se_global.hpp"
+#include "smartereye2/se_types.hpp"
+#include "smartereye2/core/options.hpp"
 
 namespace se2 {
 

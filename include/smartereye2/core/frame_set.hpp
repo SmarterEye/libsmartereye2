@@ -16,7 +16,7 @@
 #define LIBSMARTEREYE2_FRAME_SET_HPP
 
 #include "frame.hpp"
-#include "streaming/stream_types.hpp"
+#include "smartereye2/streaming/stream_types.hpp"
 
 namespace se2 {
 
@@ -48,6 +48,10 @@ class SMARTEREYE2_API FrameSet : public Frame {
       throw std::runtime_error("Frame of requested stream type was not found!");
     }
     return frame.as<VideoFrame>();
+  }
+
+  VideoFrame getVideoFrame(int frame_id) const {
+    return getVideoFrame(static_cast<FrameId>(frame_id));
   }
 
   DepthFrame getDepthFrame() const {

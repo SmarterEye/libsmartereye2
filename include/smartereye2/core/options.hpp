@@ -15,8 +15,8 @@
 #ifndef LIBSMARTEREYE2_OPTION_HPP
 #define LIBSMARTEREYE2_OPTION_HPP
 
-#include "se_global.hpp"
-#include "se_types.hpp"
+#include "smartereye2/se_global.hpp"
+#include "smartereye2/se_types.hpp"
 #include "core_types.hpp"
 
 namespace se2 {

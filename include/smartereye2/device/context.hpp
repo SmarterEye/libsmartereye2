@@ -20,11 +20,11 @@
 #include <functional>
 #include <map>
 #include <mutex>
-#include <smartereye2/proc/filter.hpp>
 
-#include "se_global.hpp"
-#include "se_types.hpp"
-#include "device/device_list.hpp"
+#include "smartereye2/se_types.hpp"
+#include "smartereye2/se_global.hpp"
+#include "smartereye2/proc/filter.hpp"
+#include "smartereye2/device/device_list.hpp"
 
 namespace se2 {
 
