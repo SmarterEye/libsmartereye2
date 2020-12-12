@@ -98,12 +98,16 @@ void FrameData::setSensor(std::shared_ptr<SensorInterface> sensor) {
   sensor_ = sensor;
 }
 
-int64_t FrameData::getFrameMetadata(const FrameMetadataValue &frame_metadata) const {
-  return 0;
+const char* FrameData::getFrameMetadata(const FrameMetadataValue &frame_metadata) const {
+  return reinterpret_cast<const char *>(extension_data_.metadata_blob.data());
+}
+
+size_t FrameData::getFrameMetadataSize() const {
+  return extension_data_.metadata_blob.size();
 }
 
 bool FrameData::supportsFrameMetadata(const FrameMetadataValue &frame_metadata) const {
-  return false;
+  return extension_data_.metadata_value == frame_metadata;
 }
 
 size_t FrameData::getFrameDataSize() const {

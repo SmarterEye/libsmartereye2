@@ -41,7 +41,9 @@ class FrameData : public FrameInterface, public noncopyable {
 
   void setSensor(std::shared_ptr<SensorInterface> sensor) override;
 
-  int64_t getFrameMetadata(const FrameMetadataValue &frame_metadata) const override;
+  const char* getFrameMetadata(const FrameMetadataValue &frame_metadata) const override;
+
+  size_t getFrameMetadataSize() const override;
 
   bool supportsFrameMetadata(const FrameMetadataValue &frame_metadata) const override;
 

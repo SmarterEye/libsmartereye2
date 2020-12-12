@@ -82,9 +82,7 @@ int main(int argc, char *argv[]) {
     cv::imshow("disparity", disparity_mat);
     cv::imshow("disp_ds", disp_ds_mat);
 
-    k = cv::waitKey(40);
-
-
+    k = cv::waitKey(1);
   }
 
   p.stop();

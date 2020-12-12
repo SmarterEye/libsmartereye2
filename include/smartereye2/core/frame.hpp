@@ -64,7 +64,8 @@ class SMARTEREYE2_API Frame {
   StreamProfile getProfile() const;
 
   double timestamp() const;
-  int64_t getFrameMetadata(FrameMetadataValue frame_metadata) const;
+  const char* getFrameMetadata(FrameMetadataValue frame_metadata) const;
+  size_t getFrameMetadataSize() const;
   bool supportsFrameMetadata(FrameMetadataValue frame_metadata) const;
   int64_t getFrameIndex() const;
   size_t dataSize() const;

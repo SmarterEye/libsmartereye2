@@ -33,7 +33,7 @@ class Option;
 
 class FrameSource {
  public:
-  explicit FrameSource(uint32_t max_publish_list_size = 16);
+  explicit FrameSource(uint32_t max_publish_list_size = 256);
 
   void init(std::shared_ptr<MetadataParserMap> metadata_parsers);
 

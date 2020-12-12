@@ -25,7 +25,7 @@ namespace libsmartereye2 {
 
 FrameAggregator::FrameAggregator(std::vector<int> streams_to_aggregate)
     : ProcessingBlock("Aggregator"),
-      queue_(new ConsumerQueue<FrameHolder>(1)),
+      queue_(new ConsumerQueue<FrameHolder>),
       streams_to_aggregate_ids_(std::move(streams_to_aggregate)),
       accepting_(true) {
 
@@ -101,7 +101,13 @@ void FrameAggregator::handleFrame(const FrameHolder& frame, SyntheticSourceInter
         LOG(ERROR) << "Failed to allocate composite frame";
         return;
       }
+      sync_fref->setTimestamp(frame->getFrameTimestamp());
+      sync_fref->setTimestampDomain(frame->getFrameTimestampDomain());
+      sync_fref->setSensor(frame->getSensor());
+      sync_fref->setStream(frame->getStream());
       queue_->enqueue(sync_fref.clone());
+
+      last_set_.clear();
     }
   }
 

@@ -22,7 +22,7 @@
 
 namespace libsmartereye2 {
 
-const uint32_t kQueueMaxSize = 10;
+const uint32_t kQueueMaxSize = 256;
 
 template<class T>
 class ConsumerQueue {

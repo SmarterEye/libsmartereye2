@@ -114,7 +114,7 @@ StreamProfiles SensorBase::getStreamProfiles(int tag) const {
       results.push_back(p);
   }
 
-  return profiles_;
+  return results;
 }
 
 StreamProfiles SensorBase::getActiveStreams() const {

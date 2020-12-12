@@ -66,8 +66,12 @@ double Frame::timestamp() const {
   return frame_ref_->getFrameTimestamp();
 }
 
-int64_t Frame::getFrameMetadata(FrameMetadataValue frame_metadata) const {
+const char* Frame::getFrameMetadata(FrameMetadataValue frame_metadata) const {
   return frame_ref_->getFrameMetadata(frame_metadata);
+}
+
+size_t Frame::getFrameMetadataSize() const {
+  return frame_ref_->getFrameDataSize();
 }
 
 bool Frame::supportsFrameMetadata(FrameMetadataValue frame_metadata) const {

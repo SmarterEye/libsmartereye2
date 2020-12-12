@@ -29,6 +29,7 @@ enum ProfileTag {
   PROFILE_TAG_ANY = 0,
   PROFILE_TAG_SUPERSET = 1, // to be included in enable_all
   PROFILE_TAG_DEFAULT = 2,  // to be included in default pipeline start
+  PROFILE_TAG_CAPTURE = 4   // tag profile for image capture only
 };
 
 struct TaggedProfile {

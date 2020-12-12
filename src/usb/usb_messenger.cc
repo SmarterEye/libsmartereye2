@@ -51,9 +51,9 @@ int UsbMessenger::bulk_transfer(const SeUsbEndpoint &endpoint, uint8_t *buffer,
   }
 
   if (sts < 0) {
-    std::string strerr = strerror(errno);
+    std::string strerr = libusb_error_name(sts);
     LOG(WARNING) << "bulk_transfer returned error, endpoint: 0x" << std::hex << int(endpoint->getAddress()) << std::dec
-                 << ", error: " << strerr << ", err. num: " << static_cast<int>(errno);
+                 << ", error: " << strerr << ", err. num: " << static_cast<int>(sts);
     return sts;
   }
   transferred = actual_length;
@@ -64,51 +64,13 @@ int UsbMessenger::reset_endpoint(const SeUsbEndpoint &endpoint, uint32_t timeout
   int ep = endpoint->getAddress();
   auto sts = libusb_clear_halt(handle_->get(), ep);
   if (sts < 0) {
-    std::string strerr = strerror(errno);
+    std::string strerr = libusb_error_name(sts);
     LOG(WARNING) << "reset_endpoint returned error, index: " << ep << ", error: " << strerr << ", number: "
-                 << static_cast<int>(errno);
+                 << static_cast<int>(sts);
     return sts;
   }
   return LIBUSB_SUCCESS;
 }
-
-/*
-int UsbMessenger::submit_request(const SeUsbRequest &request) {
-  auto nr = reinterpret_cast<libusb_transfer *>(request->get_native_request());
-  if (nr->dev_handle == nullptr) {
-    return LIBUSB_ERROR_INVALID_PARAM;
-  }
-  auto req = std::dynamic_pointer_cast<UsbRequest>(request);
-  req->set_active(true);
-  auto sts = libusb_submit_transfer(nr);
-  if (sts < 0) {
-    req->set_active(false);
-    std::string strerr = strerror(errno);
-    LOG(WARNING) << "usb_request_queue returned error, endpoint: " << request->get_endpoint()->getAddress()
-                 << " error: " << strerr << ", number: " << static_cast<int>(errno);
-    return errno;
-  }
-  return LIBUSB_SUCCESS;
-}
-
-int UsbMessenger::cancel_request(const SeUsbRequest &request) {
-  auto nr = reinterpret_cast<libusb_transfer *>(request->get_native_request());
-  auto sts = libusb_cancel_transfer(nr);
-  if (sts < 0 && sts != LIBUSB_ERROR_NOT_FOUND) {
-    std::string strerr = strerror(errno);
-    LOG(WARNING) << "usb_request_cancel returned error, endpoint: " << (int) request->get_endpoint()->getAddress()
-                 << " error: " << strerr << ", number: " << static_cast<int>(errno);
-    return errno;
-  }
-  return LIBUSB_SUCCESS;
-}
-
-SeUsbRequest UsbMessenger::create_request(const SeUsbEndpoint& endpoint) {
-  auto rv = std::make_shared<UsbRequest>(handle_->get(), endpoint);
-  rv->set_shared(rv);
-  return rv;
-}
- */
 
 }  // namespace platform
 }  // namespace libsmartereye2

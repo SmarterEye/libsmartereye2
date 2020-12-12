@@ -38,7 +38,7 @@ GeminiSensor::GeminiSensor(GeminiDevice *owner)
 GeminiSensor::~GeminiSensor() = default;
 
 StreamProfiles GeminiSensor::initStreamProfiles() {
-  StreamProfiles results;
+  StreamProfiles results = {};
   uint8_t buf[BUFFER_SIZE] = {0};
 
   auto *response = reinterpret_cast<platform::UsbCommonPackHead *>(buf);
@@ -61,7 +61,6 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
   supported_frame_infos_.clear();
   for (int i = 0; i < frame_capacity->supported_frame_count; i++) {
     auto frame_info = frame_capacity->frame_infos[i];
-    supported_frame_infos_.push_back(frame_info);
     LOG(INFO) << "frame id:" << frame_info.frame_id
               << ", frame format:" << frame_info.frame_format
               << ", frame size:" << frame_info.data_size;
@@ -76,9 +75,10 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
     profile->setUniqueId(Environment::instance().generateStreamId());
     profile->setIntrinsics(getIntrinsics());
     profile->tagProfile(ProfileTag::PROFILE_TAG_DEFAULT | ProfileTag::PROFILE_TAG_SUPERSET);  // unused now
-
     results.push_back(profile);
+
     frame_id_to_profile_[frame_info.frame_id] = profile;
+    supported_frame_infos_.push_back(frame_info);
   }
 
   free(frame_capacity);
@@ -214,8 +214,12 @@ bool GeminiSensor::startStream() {
       auto pack_data = reinterpret_cast<platform::UsbCommonPackData *>(stream_response->data);
       usb_frame_group_.timestamp = *((uint64_t *) pack_data->timestamp);
 
+//      static double last_time = 0.;
+//      double current_time = usb_frame_group_.timestamp;
+//      double gap = current_time - last_time;
+//      last_time = current_time;
 //      LOG(INFO) << "received usb frame group, frame number: " << usb_frame_group_.frame_count
-//                << ", timestamp: " << usb_frame_group_.timestamp;
+//                << ", timestamp: " << current_time << ", gap: " << gap;
 
       uint8_t *img_buf_ptr = buffer_.data() + sizeof(platform::UsbCommonPackHead);
       for (int i = 0; i < usb_frame_group_.frame_count; i++) {
@@ -270,10 +274,11 @@ void GeminiSensor::handle_received_frames() {
       video->data().resize(info->data_size, 0);
       if (with_embededline) {
         auto raw_frame_with_embededline = reinterpret_cast<RawUsbImageFrame4Embededline *>(data_ptr);
+        int embededline_size = sizeof(raw_frame_with_embededline->embededline);
         video->extension().metadata_value = FrameMetadataValue::EmbededLine;
-        video->extension().metadata_blob.resize(sizeof(raw_frame_with_embededline->embededline));
-        video->extension().metadata_blob.assign(raw_frame_with_embededline->image,
-                                                raw_frame_with_embededline->image + info->data_size);
+        video->extension().metadata_blob.resize(embededline_size);
+        video->extension().metadata_blob.assign(raw_frame_with_embededline->embededline,
+                                                raw_frame_with_embededline->embededline + embededline_size);
         video->data().assign(raw_frame_with_embededline->image, raw_frame_with_embededline->image + info->data_size);
       } else {
         auto raw_frame = reinterpret_cast<RawUsbImageFrame *>(data_ptr);

@@ -38,6 +38,7 @@
 .idea
 
 # Build
+CMakeLists.txt.user
 cmake-build*
 build*
 bin

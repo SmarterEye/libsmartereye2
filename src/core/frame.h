@@ -30,7 +30,8 @@ class FrameInterface {
   virtual std::shared_ptr<SensorInterface> getSensor() const = 0;
   virtual void setSensor(std::shared_ptr<SensorInterface> sensor) = 0;
 
-  virtual int64_t getFrameMetadata(const FrameMetadataValue &frame_metadata) const = 0;
+  virtual const char* getFrameMetadata(const FrameMetadataValue &frame_metadata) const = 0;
+  virtual size_t getFrameMetadataSize() const = 0;
   virtual bool supportsFrameMetadata(const FrameMetadataValue &frame_metadata) const = 0;
   virtual size_t getFrameDataSize() const = 0;
   virtual const char *getFrameData() const = 0;
