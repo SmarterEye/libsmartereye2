@@ -31,13 +31,11 @@ struct UsbFrameGroup {
 };
 
 struct RawUsbImageFrame {
-  uint64_t timestamp;
   uint8_t image[0];
 };
 
 struct RawUsbImageFrame4Embededline {
   uint8_t embededline[1280];
-  uint64_t timestamp;
   uint8_t image[0];
 };
 
@@ -67,7 +65,7 @@ class GeminiSensor : public SensorBase, public VideoSensorInterface {
   mutable std::mutex operation_lock_;
 
   std::vector<platform::UsbFrameInfo> supported_frame_infos_;
-  std::vector<platform::UsbFrameInfo> active_frame_infos_;
+  std::map<uint32_t, platform::UsbFrameInfo> active_frame_infos_;
   std::map<int, std::shared_ptr<StreamProfileInterface>> frame_id_to_profile_;
 
   UsbFrameGroup usb_frame_group_{};

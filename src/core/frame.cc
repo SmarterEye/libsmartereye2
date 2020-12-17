@@ -71,7 +71,7 @@ const char* Frame::getFrameMetadata(FrameMetadataValue frame_metadata) const {
 }
 
 size_t Frame::getFrameMetadataSize() const {
-  return frame_ref_->getFrameDataSize();
+  return frame_ref_->getFrameMetadataSize();
 }
 
 bool Frame::supportsFrameMetadata(FrameMetadataValue frame_metadata) const {

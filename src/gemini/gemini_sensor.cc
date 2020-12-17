@@ -22,6 +22,8 @@ static const int BUFFER_SIZE = 1024;  // Max size for control transfers
 
 namespace libsmartereye2 {
 
+static const FrameId kFrameIds4Capture = FrameId::LeftCamera | FrameId::RightCamera | FrameId::Disparity;
+
 GeminiSensor::GeminiSensor(GeminiDevice *owner)
     : SensorBase("Gemini Sensor", owner),
       device_(owner) {
@@ -74,7 +76,11 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
     profile->setFrameRate(backend_profile.fps);
     profile->setUniqueId(Environment::instance().generateStreamId());
     profile->setIntrinsics(getIntrinsics());
-    profile->tagProfile(ProfileTag::PROFILE_TAG_DEFAULT | ProfileTag::PROFILE_TAG_SUPERSET);  // unused now
+    int tags = ProfileTag::PROFILE_TAG_DEFAULT | ProfileTag::PROFILE_TAG_SUPERSET;
+    if (static_cast<FrameId>(frame_info.frame_id) & kFrameIds4Capture) {
+      tags |= ProfileTag::PROFILE_TAG_CAPTURE;
+    }
+    profile->tagProfile(tags);
     results.push_back(profile);
 
     frame_id_to_profile_[frame_info.frame_id] = profile;
@@ -99,9 +105,18 @@ void GeminiSensor::open(const StreamProfiles &requests) {
   frame_source_->init(metadata_parsers_);
   frame_source_->set_sensor(shared_from_this());
 
-  // set frame ids to device
+  // filter frameid for capture
+  StreamProfiles profiles4capture = {};
+  std::copy_if(requests.begin(),
+               requests.end(),
+               std::back_inserter(profiles4capture),
+               [](const std::shared_ptr<StreamProfileInterface>& profile) {
+                 return (profile->frameId() & kFrameIds4Capture) || (profile->tag() & ProfileTag::PROFILE_TAG_CAPTURE);
+               });
+
+  // set frame ids to device for capture
   FrameId request_frame_ids = FrameId::NotUsed;
-  for (auto &&r : requests) {
+  for (auto &&r : profiles4capture) {
     if (r->frameId() == FrameId::NotUsed) {
       LOG(ERROR) << "Requested wrong frame id!";
       continue;
@@ -119,24 +134,25 @@ void GeminiSensor::open(const StreamProfiles &requests) {
   }
 
   active_frame_infos_.clear();
-  std::copy_if(supported_frame_infos_.begin(),
-               supported_frame_infos_.end(),
-               std::back_inserter(active_frame_infos_),
-               [request_frame_ids](const platform::UsbFrameInfo &frame_info) {
-                 return frame_info.frame_id & static_cast<uint16_t>(request_frame_ids);
-               });
+  for (auto &info : supported_frame_infos_) {
+    auto frame_id = info.frame_id;
+    if (frame_id & static_cast<uint16_t>(request_frame_ids)) {
+      auto frame_index = info.frame_index;
+      active_frame_infos_[frame_index] = info;
+    }
+  }
 
   memset(&usb_frame_group_, 0, sizeof usb_frame_group_);
-  for (auto &active_frame_info : active_frame_infos_) {
+  for (auto &pair : active_frame_infos_) {
+    auto frame_index = pair.first;
     usb_frame_group_.frame_count++;
-    usb_frame_group_.total_size += active_frame_info.data_size; // only contains image bytes data
-
-    int index = active_frame_info.frame_index;  // ordered
-    usb_frame_group_.frame_infos[index] = &active_frame_info;
+    usb_frame_group_.total_size += pair.second.data_size;  // include embededline if exists
+    usb_frame_group_.frame_infos[frame_index] = &active_frame_infos_[frame_index];  // ordered
   }
 
   is_opened_ = true;
-  setActiveStream(profiles_);
+//  setActiveStream(profiles_);
+  setActiveStream(profiles4capture);
 }
 
 void GeminiSensor::close() {
@@ -195,7 +211,6 @@ void GeminiSensor::dispatch_threaded(FrameHolder frame) {
 bool GeminiSensor::startStream() {
   is_streaming_ = true;
 
-  // [imbededline(1280, option) + timestamp(8) + image(..)]
   auto suitable_buffer_size = usb_frame_group_.total_size + sizeof(platform::UsbCommonPackHead);  // over head
   buffer_.resize(suitable_buffer_size);
   std::fill(buffer_.begin(), buffer_.end(), 0);
@@ -211,21 +226,19 @@ bool GeminiSensor::startStream() {
         continue;
       }
 
-      auto pack_data = reinterpret_cast<platform::UsbCommonPackData *>(stream_response->data);
-      usb_frame_group_.timestamp = *((uint64_t *) pack_data->timestamp);
-
-//      static double last_time = 0.;
-//      double current_time = usb_frame_group_.timestamp;
-//      double gap = current_time - last_time;
-//      last_time = current_time;
-//      LOG(INFO) << "received usb frame group, frame number: " << usb_frame_group_.frame_count
-//                << ", timestamp: " << current_time << ", gap: " << gap;
-
       uint8_t *img_buf_ptr = buffer_.data() + sizeof(platform::UsbCommonPackHead);
-      for (int i = 0; i < usb_frame_group_.frame_count; i++) {
+      usb_frame_group_.timestamp = *((int64_t*)img_buf_ptr);
+      img_buf_ptr += sizeof(int64_t);
+
+      for (auto &pair : active_frame_infos_) {
         // parse data one by one
-        auto frame_info = usb_frame_group_.frame_infos[i];
-        usb_frame_group_.frame_datas[i] = img_buf_ptr;
+        auto index = pair.first;
+        auto frame_info = usb_frame_group_.frame_infos[index];
+        if (frame_info == nullptr) {
+          LOG(ERROR) << "active_frame_infos is not valide";
+          break;
+        }
+        usb_frame_group_.frame_datas[index] = img_buf_ptr;
         img_buf_ptr += frame_info->data_size;
       }
 
@@ -243,13 +256,15 @@ void GeminiSensor::stopStream() {
 }
 
 void GeminiSensor::handle_received_frames() {
-  for (int i = 0; i < usb_frame_group_.frame_count; i++) {
+  for (auto &pair : active_frame_infos_) {
+    auto index = pair.first;
+
     auto timestamp = usb_frame_group_.timestamp;
-    auto info = usb_frame_group_.frame_infos[i];
+    auto info = usb_frame_group_.frame_infos[index];
     auto frame_id = static_cast<FrameId>(info->frame_id);
     auto frame_format = static_cast<FrameFormat>(info->frame_format);
     auto frame_index = info->frame_index;
-    auto data_ptr = usb_frame_group_.frame_datas[i];
+    auto data_ptr = usb_frame_group_.frame_datas[index];
 
     auto profile = frame_id_to_profile_[static_cast<int>(frame_id)];
     if (profile == nullptr) {
