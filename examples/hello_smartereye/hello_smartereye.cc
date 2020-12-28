@@ -19,10 +19,23 @@ using namespace se2;
 
 int main(int argc, char *argv[]) {
   // Create a Pipeline - this serves as a top-level API for streaming and processing frames
-  se2::Pipeline p;
+  se2::Pipeline pipeline;
 
   // Configure and start the pipeline
-  p.start();
+  pipeline.start();
+
+  // Register device changed callback for getting device connection state
+  auto dev = pipeline.getActiveProfile().getDevice();
+  DevicesChangedCallbackPtr cb(new DevicesChangedCallback(
+      [&](DeviceChangedEvent &changed_event) {
+        if (changed_event.wasAdded(dev)) {
+          std::cout << "current device connected!!!" << std::endl;
+        } else if (changed_event.wasRemoved(dev)) {
+          std::cout << "current device disconnected!!!" << std::endl;
+        }
+      }
+  ));
+  auto cb_id = pipeline.registerInternalDeviceCallback(cb);
 
   int k = 0;
   cv::namedWindow("ori_left");
@@ -31,7 +44,9 @@ int main(int argc, char *argv[]) {
 
   while (k != 27) {
     // Block program until frames arrive
-    se2::FrameSet frames = p.waitForFrames();
+    se2::FrameSet frames = pipeline.waitForFrames();
+
+    if (!frames) continue;
 
     // Try to get a frames
     auto ori_left_color = frames.getVideoFrame(FrameId::LeftCamera); // 0
@@ -61,7 +76,8 @@ int main(int argc, char *argv[]) {
     k = cv::waitKey(1);
   }
 
-  p.stop();
+  pipeline.unregisterDevicesChangedCallback(cb_id);
+  pipeline.stop();
   cv::destroyAllWindows();
 
   return 0;

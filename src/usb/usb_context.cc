@@ -22,28 +22,12 @@ namespace libsmartereye2 {
 namespace platform {
 
 UsbContext::UsbContext()
-    : usb_context_(nullptr), usb_device_list_(nullptr), usb_device_count_(0) {
+    : usb_context_(nullptr), dev_handle_(nullptr), usb_device_list_(nullptr), usb_device_count_(0) {
   int res = libusb_init(&usb_context_);
   if (res != LIBUSB_SUCCESS) {
     LOG(ERROR) << "libusb_init failed: " << res;
   }
   usb_device_count_ = libusb_get_device_list(usb_context_, &usb_device_list_);
-
-  libusb_device *foo = nullptr;
-  libusb_device *bar = nullptr;
-  libusb_device_descriptor desc;
-  int ret = 0;
-  for (int i = 0; i < usb_device_count_; i++) {
-    foo = usb_device_list_[i];
-    ret = libusb_get_device_descriptor(foo, &desc);
-    if (desc.idVendor==0xF525 && desc.idProduct==0xC4a0) {
-      bar = foo;
-      break;
-    }
-  }
-
-//  int xx = libusb_open(bar, &dev_handle_);
-  void(0);
 }
 
 UsbContext::~UsbContext() {
@@ -52,7 +36,6 @@ UsbContext::~UsbContext() {
   if (event_handler_thread_.joinable()) {
     event_handler_thread_.join();
   }
-//  libusb_close(dev_handle_);
   libusb_exit(usb_context_);
 }
 

@@ -42,7 +42,11 @@ class PipelinePrivate : public std::enable_shared_from_this<PipelinePrivate> {
 
   std::shared_ptr<PipelineProfilePrivate> start(std::shared_ptr<PipelineConfigPrivate> conf,
                                                 FrameCallbackPtr callback = nullptr);
-  void stop();
+  void stop(bool force);
+  bool isConnected() const;
+
+  int64_t registerInternalDeviceCallback(DevicesChangedCallbackPtr callback);
+  void unregisterDevicesChangedCallback(int64_t cb_id);
 
   std::shared_ptr<PipelineProfilePrivate> getActiveProfile() const;
   FrameHolder waitForFrames(uint32_t timeout_ms);
@@ -55,24 +59,23 @@ class PipelinePrivate : public std::enable_shared_from_this<PipelinePrivate> {
  protected:
   FrameCallbackPtr getCallback(const std::vector<int>& synced_streams_ids);
   std::vector<int> onStart(const std::shared_ptr<PipelineProfilePrivate>& profile);
-  void unsafeStart(std::shared_ptr<PipelineConfigPrivate> conf);
+  bool unsafeStart(std::shared_ptr<PipelineConfigPrivate> conf);
   void unsafeStop();
 
   mutable std::mutex mutex_;
   std::shared_ptr<PipelineProfilePrivate> active_profile_;
   std::shared_ptr<PipelineConfigPrivate> prev_conf_;
-  DeviceHubPrivate hub_;
+  DeviceHubPrivate device_hub_;
 
  private:
   std::shared_ptr<PipelineProfilePrivate> unsafeGetActiveProfile() const;
 
   std::shared_ptr<ContextPrivate> context_;
-  int playback_stopped_token_ = -1;
-  Dispatcher dispatcher_;
 
   std::unique_ptr<FrameAggregator> aggregator_;
   std::vector<FrameId> synced_streams_;
   FrameCallbackPtr streams_callback_;
+  bool is_stopping_;
 };
 
 }  // namespace libsmartereye2

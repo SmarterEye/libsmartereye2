@@ -158,11 +158,7 @@ struct UsbDeviceInfo {
   }
 
   bool operator==(const UsbDeviceInfo &other) const {
-    return id == other.id
-        && vid == other.vid
-        && pid == other.pid
-        && mi == other.mi
-        && unique_id == other.unique_id;
+    return  vid == other.vid && pid == other.pid;
   }
 };
 

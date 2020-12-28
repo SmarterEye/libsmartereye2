@@ -16,12 +16,14 @@
 #define LIBSMARTEREYE2_FRAME_QUEUE_HPP
 
 #include "smartereye2/se_types.hpp"
+#include "smartereye2/se_global.hpp"
 
 namespace se2 {
 
 class Frame;
 
-class FrameQueue {
+// TODO
+class SMARTEREYE2_API FrameQueue {
  public:
   explicit FrameQueue(uint32_t capacity, bool keep_frames = false)
       : capacity_(capacity), keep_(keep_frames) {

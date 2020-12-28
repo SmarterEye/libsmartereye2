@@ -42,11 +42,12 @@ class UsbDevice : public std::enable_shared_from_this<UsbDevice> {
   std::vector<SeUsbInterface> getInterfaces() const { return interfaces_; }
   SeUsbInterface getInterface(uint8_t interface_number) const;
   SeUsbMessenger open(uint8_t interface_number);
-  const std::vector<UsbDescriptor> get_descriptors() const { return descriptors_; }
+  std::vector<UsbDescriptor> get_descriptors() const { return descriptors_; }
 
  private:
   libusb_device *device_;
   libusb_device_descriptor usb_device_descriptor_;
+  libusb_hotplug_callback_handle hotplug_cb_handle_ = 0;
   const UsbDeviceInfo info_{};
   std::vector<std::shared_ptr<UsbInterface>> interfaces_;
   std::vector<UsbDescriptor> descriptors_;

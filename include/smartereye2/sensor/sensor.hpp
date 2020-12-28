@@ -78,23 +78,23 @@ class SMARTEREYE2_API Sensor : public Options {
   std::shared_ptr<SeSensor> sensor_;
 };
 
-class ColorSensor : public Sensor {
+class SMARTEREYE2_API ColorSensor : public Sensor {
 
 };
 
-class MotionSensor : public Sensor {
+class SMARTEREYE2_API MotionSensor : public Sensor {
 
 };
 
-class RoiSensor : public Sensor {
+class SMARTEREYE2_API RoiSensor : public Sensor {
 
 };
 
-class DepthSensor : public Sensor {
+class SMARTEREYE2_API DepthSensor : public Sensor {
 
 };
 
-class DepthStereoSensor : public DepthSensor {
+class SMARTEREYE2_API DepthStereoSensor : public DepthSensor {
 
 };
 

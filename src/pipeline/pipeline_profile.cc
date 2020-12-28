@@ -14,6 +14,7 @@
 
 #include "pipeline_profile.h"
 #include "device/device.h"
+#include "device/device_info.h"
 #include "streaming/stream_profile.h"
 
 #include "pipeline/pipeline_profile.hpp"
@@ -51,7 +52,7 @@ StreamProfiles PipelineProfilePrivate::getActiveStreams() const {
   return stream_profiles;
 }
 
-MultiStream::MultiStream(const std::shared_ptr<DeviceInterface>& dev) {
+MultiStream::MultiStream(const std::shared_ptr<DeviceInterface> &dev) {
   for (size_t i = 0; i < dev->getSensorCount(); i++) {
     sensors_.push_back(&dev->getSensor(i));
   }
@@ -79,6 +80,15 @@ void MultiStream::stop() {
   for (auto &&sensor : sensors_) {
     sensor->stop();
   }
+}
+
+bool MultiStream::isStreaming() const {
+  for (const auto &sensor : sensors_) {
+    if (sensor->isStreaming()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace libsmartereye2
@@ -109,7 +119,7 @@ StreamProfile PipelineProfile::getStream(FrameId frame_id, int index) const {
 
 Device PipelineProfile::getDevice() const {
   auto device_interface = pipeline_profile_->profile->getDevice();
-  std::shared_ptr<libsmartereye2::DeviceInfo> device_info = nullptr;
+  auto device_info = std::make_shared<libsmartereye2::ReadonlyDeviceInfo>(device_interface);
   std::shared_ptr<SeDevice> dev(new SeDevice{device_interface->getContext(), device_info, device_interface});
   return Device(dev);
 }

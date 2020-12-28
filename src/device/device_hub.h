@@ -24,15 +24,8 @@
 #include "se_types.hpp"
 
 namespace libsmartereye2 {
+
 class DeviceHubPrivate;
-}
-
-struct SeDeviceHub {
-  std::shared_ptr<libsmartereye2::DeviceHubPrivate> hub;
-};
-
-namespace libsmartereye2 {
-
 class DeviceInterface;
 class DeviceInfo;
 class ContextPrivate;
@@ -49,15 +42,15 @@ class DeviceHubPrivate {
   std::shared_ptr<DeviceInterface> waitForDevice(const std::chrono::milliseconds &timeout = std::chrono::milliseconds(
       std::chrono::hours(1)), bool loop_through_devices = true, const std::string &serial = "");
 
-  bool isConnected(const DeviceInterface &dev);
+  bool isConnected(const DeviceInterface &dev) const;
 
-  std::shared_ptr<ContextPrivate> getContext() { return context_; }
+  std::vector<std::shared_ptr<DeviceInfo>> getDeviceList() const { return device_list_; }
 
  private:
   std::shared_ptr<DeviceInterface> createDevice(const std::string &serial, bool cycle_devices = true);
 
   std::shared_ptr<ContextPrivate> context_;
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
   std::condition_variable cv_;
   std::vector<std::shared_ptr<DeviceInfo>> device_list_{};
   int camera_index_ = 0;

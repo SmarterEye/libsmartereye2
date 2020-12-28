@@ -19,49 +19,11 @@
 
 namespace libsmartereye2 {
 
-template<class T = std::function<void(Dispatcher::CancellableTimer)>>
-class ActiveObject {
- public:
-  explicit ActiveObject(T operation)
-      : operation_(std::move(operation)), dispatcher_(1), stopped_(true) {
-  }
-
-  void start() {
-    stopped_ = false;
-    dispatcher_.start();
-
-    loop();
-  }
-
-  void stop() {
-    stopped_ = true;
-    dispatcher_.stop();
-  }
-
-  ~ActiveObject() {
-    stop();
-  }
-
- private:
-  void loop() {
-    dispatcher_.invoke([this](Dispatcher::CancellableTimer ct) {
-      operation_(ct);
-      if (!stopped_) {
-        loop();
-      }
-    });
-  }
-
-  T operation_;
-  Dispatcher dispatcher_;
-  std::atomic<bool> stopped_;
-};
-
 class Watchdog {
  public:
   Watchdog(std::function<void()> operation, uint64_t timeout_ms) :
       timeout_ms_(timeout_ms), operation_(std::move(operation)) {
-    watcher_ = std::make_shared<ActiveObject<>>([this](Dispatcher::CancellableTimer cancellable_timer) {
+    watcher_ = std::make_shared<RepeatOperation<>>([this](Dispatcher::CancellableTimer cancellable_timer) {
       if (cancellable_timer.trySleep(timeout_ms_)) {
         if (!kicked_)
           operation_();
@@ -107,7 +69,7 @@ class Watchdog {
   bool kicked_ = false;
   bool running_ = false;
   std::function<void()> operation_;
-  std::shared_ptr<ActiveObject<>> watcher_{};
+  std::shared_ptr<RepeatOperation<>> watcher_{};
 };
 
 }  // namespace libsmartereye2

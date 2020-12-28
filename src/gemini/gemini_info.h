@@ -23,7 +23,7 @@ class GeminiDevice;
 
 class GeminiInfo : public DeviceInfo {
  public:
-  GeminiInfo(std::shared_ptr<ContextPrivate> ctx, platform::UsbDeviceInfo xx);
+  GeminiInfo(std::shared_ptr<ContextPrivate> ctx, platform::UsbDeviceInfo info);
 
   ~GeminiInfo();
 
@@ -32,11 +32,11 @@ class GeminiInfo : public DeviceInfo {
   std::shared_ptr<DeviceInterface> create(std::shared_ptr<ContextPrivate> ctx,
                                           bool register_device_notifications) const override;
 
-  static std::vector<std::shared_ptr<DeviceInfo>> pikachu(std::shared_ptr<ContextPrivate> ctx,
-                                                          std::vector<platform::UsbDeviceInfo> &usb_infos);
+  static std::vector<std::shared_ptr<DeviceInfo>> pickup(const std::shared_ptr<ContextPrivate>& ctx,
+                                                         const std::vector<platform::UsbDeviceInfo> &usb_infos);
 
  private:
-  platform::UsbDeviceInfo abc_;
+  platform::UsbDeviceInfo usb_device_info_;
 };
 
 }  // namespace libsmartereye2

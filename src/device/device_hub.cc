@@ -17,14 +17,10 @@
 #include "device/device_info.h"
 #include "easylogging++.h"
 
-#include "device/device_hub.hpp"
-
 #include <memory>
 #include "smartereye2/device/context.hpp"
 
 namespace libsmartereye2 {
-
-using HubDevicesChangedCallback = se2::DevicesChangedCallback<std::function<void(se2::EventInfomation &info)>>;
 
 std::vector<std::shared_ptr<DeviceInfo>> filter_by_vid(const std::vector<std::shared_ptr<DeviceInfo>> &devices,
                                                        int vid) {
@@ -58,9 +54,7 @@ DeviceHubPrivate::DeviceHubPrivate(std::shared_ptr<ContextPrivate> ctx,
       vid_(vid),
       device_changes_callback_id_(0),
       register_device_notifications_(register_device_notifications) {
-
-//  device_list_ = filter_by_vid(context_->queryDevices(mask), vid_);
-  DevicesChangedCallbackPtr cb(new HubDevicesChangedCallback([this, mask](se2::EventInfomation &) {
+  DevicesChangedCallbackPtr cb(new se2::DevicesChangedCallback([this, mask](se2::DeviceChangedEvent &) {
     std::unique_lock<std::mutex> lock(mutex_);
     device_list_ = filter_by_vid(context_->queryDevices(mask), vid_);
     camera_index_ = 0;
@@ -68,12 +62,12 @@ DeviceHubPrivate::DeviceHubPrivate(std::shared_ptr<ContextPrivate> ctx,
       cv_.notify_all();
     }
   }));
-  device_changes_callback_id_ = context_->registerInternalDeviceCallback(cb);
+  device_changes_callback_id_ = context_->registerDevicesChangedCallback(cb);
 }
 
 DeviceHubPrivate::~DeviceHubPrivate() {
   if (device_changes_callback_id_) {
-    context_->unregisterInternalDeviceCallback(device_changes_callback_id_);
+    context_->unregisterDevicesChangedCallback(device_changes_callback_id_);
   }
   context_->stop();
 }
@@ -101,7 +95,7 @@ std::shared_ptr<DeviceInterface> DeviceHubPrivate::waitForDevice(const std::chro
   return res;
 }
 
-bool DeviceHubPrivate::isConnected(const DeviceInterface &dev) {
+bool DeviceHubPrivate::isConnected(const DeviceInterface &dev) const {
   std::unique_lock<std::mutex> lock(mutex_);
   return dev.isValid();
 }
@@ -139,28 +133,3 @@ std::shared_ptr<DeviceInterface> DeviceHubPrivate::createDevice(const std::strin
 }
 
 }  // namespace libsmartereye2
-
-namespace se2 {
-
-DeviceHub::DeviceHub(const Context &context) {
-  device_hub_ = std::make_shared<SeDeviceHub>(SeDeviceHub{
-      std::make_shared<libsmartereye2::DeviceHubPrivate>(context.context_->context)});
-}
-
-Device DeviceHub::waitForDevice() const {
-  auto dev_interface = device_hub_->hub->waitForDevice();
-  std::shared_ptr<SeDevice> device(new SeDevice{
-      device_hub_->hub->getContext(),
-      std::make_shared<ReadonlyDeviceInfo>(dev_interface),
-      dev_interface
-  });
-  return Device(device);
-}
-
-bool DeviceHub::isConnected(const Device &dev) const {
-  bool res = device_hub_->hub->isConnected(*dev.device_->device);
-  return res;
-}
-
-}  // namespace se2
-

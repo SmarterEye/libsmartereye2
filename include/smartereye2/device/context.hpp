@@ -16,6 +16,7 @@
 #define LIBSMARTEREYE2_CONTEXT_HPP
 
 #include <memory>
+#include <utility>
 #include <vector>
 #include <functional>
 #include <map>
@@ -32,9 +33,9 @@ class Device;
 class DeviceList;
 class Sensor;
 
-class EventInfomation {
+class SMARTEREYE2_API DeviceChangedEvent {
  public:
-  EventInfomation(DeviceList removed, DeviceList added)
+  DeviceChangedEvent(DeviceList removed, DeviceList added)
       : removed_(std::move(removed)), added_(std::move(added)) {}
 
   bool wasRemoved(const Device &dev) const;
@@ -47,21 +48,15 @@ class EventInfomation {
   DeviceList added_;
 };
 
-template<class T>
-class DevicesChangedCallback : public SeDevicesChangedCallback {
+using DeviceChangeFunction = std::function<void(se2::DeviceChangedEvent &info)>;
+class SMARTEREYE2_API DevicesChangedCallback : public SeDevicesChangedCallback {
  public:
-  explicit DevicesChangedCallback(T callback) : callback_(callback) {}
-  void onDevicesChanged(SeDeviceList *removed, SeDeviceList *added) override {
-    std::shared_ptr<SeDeviceList> old(removed);
-    std::shared_ptr<SeDeviceList> news(added);
-
-    EventInfomation info((DeviceList(old)), DeviceList(news));
-    callback_(info);
-  }
+  explicit DevicesChangedCallback(DeviceChangeFunction callback);
+  void onDevicesChanged(SeDeviceList *removed, SeDeviceList *added) override;
   void release() override { delete this; }
 
  private:
-  T callback_;
+  DeviceChangeFunction callback_;
 };
 
 class SMARTEREYE2_API Context : public std::enable_shared_from_this<Context> {

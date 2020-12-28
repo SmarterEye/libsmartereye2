@@ -20,7 +20,7 @@
 #include "sensor/sensor_types.hpp"
 
 namespace libsmartereye2 {
-class NotificationPrivate;
+struct NotificationPrivate;
 }
 
 struct SeNotification {

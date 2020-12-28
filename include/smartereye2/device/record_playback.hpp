@@ -17,7 +17,7 @@
 
 #include "device.hpp"
 #include "device_types.hpp"
-#include "se_callbacks.hpp"
+#include "smartereye2/se_callbacks.hpp"
 
 #include <utility>
 
@@ -36,27 +36,27 @@ class StatusChangedCallback : public SePlaybackChangedCallback {
   void release() override { delete this; }
 };
 
-class Playback : public Device {
+class SMARTEREYE2_API Playback : public Device {
  public:
   explicit Playback(Device device) {}
 
-  void pause();
-  void resume();
-  void stop();
-  void seek();
+  void pause() {}
+  void resume() {}
+  void stop() {}
+  void seek() {}
 
   std::string fileName() const { return file_; }
-  uint64_t position() const;
-  std::chrono::nanoseconds duration() const;
+  uint64_t position() const { return 0; }
+  std::chrono::nanoseconds duration() const { return std::chrono::nanoseconds(0); }
 
-  bool isRealTime() const;
-  void setRealTime(bool is_real_time);
-  void setPlaybackSpeed(float speed);
+  bool isRealTime() const { return false; }
+  void setRealTime(bool is_real_time) {}
+  void setPlaybackSpeed(float speed) {}
 
   template<class T>
-  void setStatusChangedCallback();
+  void setStatusChangedCallback() {}
 
-  PlaybackStatus currentStatus() const;
+  PlaybackStatus currentStatus() const {}
 
  protected:
   friend class Context;
@@ -66,11 +66,11 @@ class Playback : public Device {
   std::string file_;
 };
 
-class Recorder : public Device {
+class SMARTEREYE2_API Recorder : public Device {
  public:
-  explicit Recorder(const Device& device) : Recorder(device.get()) {}
+  explicit Recorder(const Device &device) : Recorder(device.get()) {}
 
-  Recorder(const std::string &file, const Device& dev) {}
+  Recorder(const std::string &file, const Device &dev) {}
 
  protected:
   explicit Recorder(std::shared_ptr<SeDevice> dev) : Device(std::move(dev)) {}

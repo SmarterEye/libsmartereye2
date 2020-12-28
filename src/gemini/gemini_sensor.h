@@ -54,14 +54,14 @@ class GeminiSensor : public SensorBase, public VideoSensorInterface {
   // override from VideoSensorInterface
   Intrinsics getIntrinsics() const override;
 
-  void dispose() {}
+  void init();
+  void dispose();
 
  protected:
   bool startStream();
   void stopStream();
 
  private:
-  GeminiDevice *device_;
   mutable std::mutex operation_lock_;
 
   std::vector<platform::UsbFrameInfo> supported_frame_infos_;
@@ -76,7 +76,7 @@ class GeminiSensor : public SensorBase, public VideoSensorInterface {
   void dispatch_threaded(FrameHolder frame);
 
   // stream
-  std::thread stream_thread;
+  std::thread stream_thread_;
   void handle_received_frames();
 };
 

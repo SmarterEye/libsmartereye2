@@ -36,21 +36,21 @@ class ContextPrivate : public std::enable_shared_from_this<ContextPrivate> {
   explicit ContextPrivate(platform::BackendType type,
                           const std::string &filename = "",
                           const std::string &section = "");
-  virtual ~ContextPrivate() = default;
+  virtual ~ContextPrivate();
 
+  void start();
   void stop();
   std::vector<std::shared_ptr<DeviceInfo>> queryDevices(int mask) const;
 
-  int64_t registerInternalDeviceCallback(DevicesChangedCallbackPtr callback);
-  void unregisterInternalDeviceCallback(int64_t cb_id);
-  void setDevicesChangedCallback(DevicesChangedCallbackPtr callback);
+  int64_t registerDevicesChangedCallback(DevicesChangedCallbackPtr callback);
+  void unregisterDevicesChangedCallback(int64_t cb_id);
 
   std::vector<std::shared_ptr<DeviceInfo>>
   createDevices(platform::BackendDeviceGroup devices,
                 const std::map<std::string, std::weak_ptr<DeviceInfo>> &playback_devices,
                 int mask) const;
 
-  std::shared_ptr<PlaybackDeviceInfo> addDevice(const std::string &file);
+  std::shared_ptr<PlaybackDeviceInfo> addPlaybackDevice(const std::string &file);
 
  protected:
   void onDeviceChanged(platform::BackendDeviceGroup old, platform::BackendDeviceGroup current,
@@ -64,17 +64,15 @@ class ContextPrivate : public std::enable_shared_from_this<ContextPrivate> {
   std::shared_ptr<platform::DeviceWather> device_watcher_;
   std::map<std::string, std::weak_ptr<DeviceInfo>> playback_devices_;
   std::map<int64_t, DevicesChangedCallbackPtr> devices_changed_callbacks_{};
-
-  DevicesChangedCallbackPtr devices_changed_callback_{};
   std::map<int, std::weak_ptr<const StreamProfileBase>> streams_;
-  std::mutex _streams_mutex, _devices_changed_callbacks_mtx;
+  mutable std::mutex streams_mtx_;
+  mutable std::mutex devices_changed_callbacks_mtx_;
 };
 
 }  // namespace libsmartereye2
 
 struct SeContext {
   std::shared_ptr<libsmartereye2::ContextPrivate> context;
-  ~SeContext() { context->stop(); }
 };
 
 #endif  // LIBSMARTEREYE2_CONTEXT_H

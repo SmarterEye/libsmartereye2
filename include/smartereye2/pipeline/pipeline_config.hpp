@@ -19,7 +19,7 @@ namespace se2 {
 
 class PipelineProfile;
 
-class PipelineConfig {
+class SMARTEREYE2_API PipelineConfig {
  public:
   PipelineConfig();
 

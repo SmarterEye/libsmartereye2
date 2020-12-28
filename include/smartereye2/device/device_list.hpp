@@ -20,7 +20,7 @@
 
 namespace se2 {
 
-class DeviceList {
+class SMARTEREYE2_API DeviceList {
  public:
   explicit DeviceList(std::shared_ptr<SeDeviceList> list)
       : list_(std::move(list)) {}

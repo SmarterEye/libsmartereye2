@@ -115,7 +115,8 @@ struct BackendDeviceGroup {
   std::vector<PlaybackDeviceInfo> playback_devices;
 
   bool operator==(const BackendDeviceGroup &other) const {
-    return !listChanged(playback_devices, other.playback_devices);
+    return !listChanged(usb_devices, other.usb_devices) &&
+        !listChanged(playback_devices, other.playback_devices);
   }
 
   explicit operator std::string() {
@@ -149,7 +150,7 @@ class Backend;
 
 class PollingDeviceWatcher : public DeviceWather {
  public:
-  explicit PollingDeviceWatcher(const Backend *backend_ref);
+  explicit PollingDeviceWatcher(const Backend *backend);
   ~PollingDeviceWatcher();
 
   void polling(Dispatcher::CancellableTimer timer);
@@ -158,12 +159,12 @@ class PollingDeviceWatcher : public DeviceWather {
   void stop() override;
 
  private:
-//  active_object<> active_object_;
+  RepeatOperation<> repeat_operation_;
 
   CallbacksHeap callback_inflight_;
   const Backend *backend_;
 
-  BackendDeviceGroup devices_data_;
+  BackendDeviceGroup discovered_devices_;
   DeviceChangedCallback callback_;
 };
 

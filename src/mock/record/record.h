@@ -27,7 +27,7 @@ namespace platform {
 
 class TimeService;
 class PlaybackDeviceWatcher;
-class UsbDeviceInfo;
+struct UsbDeviceInfo;
 struct BackendProfile;
 
 class Recording {

@@ -18,11 +18,12 @@
 #include <string>
 
 #include "sensor_types.hpp"
-#include "se_callbacks.hpp"
+#include "smartereye2/se_callbacks.hpp"
+#include "smartereye2/se_global.hpp"
 
 namespace se2 {
 
-class Notification {
+class SMARTEREYE2_API Notification {
  public:
   explicit Notification(SeNotification *notification);
 

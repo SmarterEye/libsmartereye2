@@ -64,6 +64,7 @@ class MultiStream {
   }
   void stop();
 
+  bool isStreaming() const;
   StreamProfiles getAllProfiles() const { return all_profiles_; }
   std::vector<SensorInterface *> getSensors() const { return sensors_; }
 

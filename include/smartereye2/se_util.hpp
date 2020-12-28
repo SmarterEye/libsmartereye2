@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <sstream>
+#include <vector>
 
 class noncopyable {
  public:
@@ -39,13 +40,19 @@ struct toString {
   operator std::string() const { return ss.str(); }
 };
 
-namespace libsmartereye2 {
-namespace platform {
-
-
-
-}  // namespace platform
-}  // namespace libsmartereye2
+template<class T>
+std::vector<std::shared_ptr<T>> subtractSets(const std::vector<std::shared_ptr<T>> &first,
+                                              const std::vector<std::shared_ptr<T>> &second) {
+  std::vector<std::shared_ptr<T>> results;
+  std::for_each(first.begin(), first.end(), [&](std::shared_ptr<T> data) {
+    if (std::find_if(second.begin(), second.end(), [&](std::shared_ptr<T> new_dev) {
+      return data == new_dev;
+    }) == second.end()) {
+      results.push_back(data);
+    }
+  });
+  return results;
+}
 
 #define CHECK_PTR_NOT_NULL(ARG) if (!(ARG)) throw std::runtime_error("null pointer passed for argument \"" #ARG "\"");
 

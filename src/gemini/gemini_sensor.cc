@@ -25,16 +25,9 @@ namespace libsmartereye2 {
 static const FrameId kFrameIds4Capture = FrameId::LeftCamera | FrameId::RightCamera | FrameId::Disparity;
 
 GeminiSensor::GeminiSensor(GeminiDevice *owner)
-    : SensorBase("Gemini Sensor", owner),
-      device_(owner) {
-  LOG(DEBUG) << "Making a Gemini Sensor" << this;
-
-  profiles_ = initStreamProfiles();
-  device_owner_->tagProfiles(profiles_);
-
-  frame_source_->set_max_publish_list_size(256);
-  data_dispatcher_ = std::make_shared<Dispatcher>(256);
-  data_dispatcher_->start();
+    : SensorBase("Gemini Sensor", owner) {
+  LOG(DEBUG) << "Making a Gemini Sensor " << this;
+  init();
 }
 
 GeminiSensor::~GeminiSensor() = default;
@@ -44,15 +37,35 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
   uint8_t buf[BUFFER_SIZE] = {0};
 
   auto *response = reinterpret_cast<platform::UsbCommonPackHead *>(buf);
-  platform::UsbStatus ret = device_->control_transfer_in(platform::UsbCommand::QUERY_FRAME_CAP,
-                                                         0, response, BUFFER_SIZE);
+  auto gemini_device = dynamic_cast<GeminiDevice*>(device_owner_);
 
-  if (ret != platform::UsbStatus::SE2_USB_STATUS_SUCCESS || response->state < 0) {
-    LOG(ERROR) << "QUERY_FRAME_CAP error";
-    return results;
+  // wait for TaskRunner
+  int16_t open_cam_stat = -1;
+  while (open_cam_stat < 0) {
+    platform::UsbStatus ret = gemini_device->control_transfer_in(platform::UsbCommand::OPEN_CAM,
+                                                                 0, response, BUFFER_SIZE);
+
+    if (ret != platform::UsbStatus::SE2_USB_STATUS_SUCCESS || response->state != 0) {
+      LOG(ERROR) << "OPEN_CAM error";
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+    } else {
+      open_cam_stat = response->state;
+    }
   }
 
-  auto frame_info_count = response->frame_info_count;
+  int16_t frame_info_count = -1;
+  while (frame_info_count < 0) {
+    platform::UsbStatus ret = gemini_device->control_transfer_in(platform::UsbCommand::QUERY_FRAME_CAP,
+                                                                 0, response, BUFFER_SIZE);
+
+    if (ret != platform::UsbStatus::SE2_USB_STATUS_SUCCESS || response->state < 0) {
+      LOG(ERROR) << "QUERY_FRAME_CAP error";
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+    } else {
+      frame_info_count = response->frame_info_count;
+    }
+  }
+
   auto *frame_capacity = (platform::UsbFrameCapacity *) malloc(
       sizeof(platform::UsbFrameCapacity) + sizeof(platform::UsbFrameInfo) * frame_info_count
   );
@@ -110,7 +123,7 @@ void GeminiSensor::open(const StreamProfiles &requests) {
   std::copy_if(requests.begin(),
                requests.end(),
                std::back_inserter(profiles4capture),
-               [](const std::shared_ptr<StreamProfileInterface>& profile) {
+               [](const std::shared_ptr<StreamProfileInterface> &profile) {
                  return (profile->frameId() & kFrameIds4Capture) || (profile->tag() & ProfileTag::PROFILE_TAG_CAPTURE);
                });
 
@@ -126,8 +139,9 @@ void GeminiSensor::open(const StreamProfiles &requests) {
 
   uint8_t buf[BUFFER_SIZE] = {0};
   auto *response = reinterpret_cast<platform::UsbCommonPackHead *>(buf);
-  int ret = device_->control_transfer_in(platform::UsbCommand::SET_FRAME_IDS,
-                                         static_cast<int>(request_frame_ids), response, BUFFER_SIZE);
+  auto gemini_device = dynamic_cast<GeminiDevice*>(device_owner_);
+  int ret = gemini_device->control_transfer_in(platform::UsbCommand::SET_FRAME_IDS,
+                                               static_cast<int>(request_frame_ids), response, BUFFER_SIZE);
   if (ret < 0) {
     LOG(ERROR) << "SET_FRAME_IDS failed: " << libusb_error_name(ret);
     return;
@@ -151,7 +165,6 @@ void GeminiSensor::open(const StreamProfiles &requests) {
   }
 
   is_opened_ = true;
-//  setActiveStream(profiles_);
   setActiveStream(profiles4capture);
 }
 
@@ -174,6 +187,8 @@ void GeminiSensor::start(FrameCallbackPtr callback) {
   LOG(DEBUG) << "Gemini Sensor start...";
 
   std::lock_guard<std::mutex> lock(operation_lock_);
+  data_dispatcher_->start();
+
   if (is_streaming_) {
     throw std::runtime_error("start(...) failed. Gemini device is already streaming!");
   } else if (!is_opened_) {
@@ -188,6 +203,9 @@ void GeminiSensor::stop() {
   LOG(DEBUG) << "Gemini Sensor stop...";
 
   std::lock_guard<std::mutex> lock(operation_lock_);
+  data_dispatcher_->flush();
+  data_dispatcher_->stop();
+
   if (!is_streaming_) {
     throw std::runtime_error("stop(...) failed. Gemini device is not streaming!");
   }
@@ -198,6 +216,17 @@ void GeminiSensor::stop() {
 Intrinsics GeminiSensor::getIntrinsics() const {
   // TODO
   return {};
+}
+
+void GeminiSensor::init() {
+  profiles_ = initStreamProfiles();
+  device_owner_->tagProfiles(profiles_);
+  frame_source_->set_max_publish_list_size(256);
+  data_dispatcher_ = std::make_shared<Dispatcher>(256);
+}
+
+void GeminiSensor::dispose() {
+  // TODO
 }
 
 void GeminiSensor::dispatch_threaded(FrameHolder frame) {
@@ -215,19 +244,32 @@ bool GeminiSensor::startStream() {
   buffer_.resize(suitable_buffer_size);
   std::fill(buffer_.begin(), buffer_.end(), 0);
 
-  stream_thread = std::thread([this] {
+  stream_thread_ = std::thread([this] {
+    auto gemini_device = dynamic_cast<GeminiDevice*>(device_owner_);
     int ret = 0;
+    int missing_cnt = 0;
+    const int kMissingFrameThreshold = 25; // 25 frames for 1 sec
 
     while (is_streaming_) {
       auto stream_response = (platform::UsbCommonPackHead *) buffer_.data();
-      ret = device_->stream_read(*stream_response);
+      ret = gemini_device->stream_read(*stream_response);
       if (ret != 0) {
-        LOG(ERROR) << "bulk_transer_in error: " << ret;
+        missing_cnt++;
+        if (missing_cnt > kMissingFrameThreshold) {
+          gemini_device->hardwareReset();
+          gemini_device->setValid(false);
+          std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
         continue;
       }
 
+      if (missing_cnt > 0) {
+        missing_cnt = 0;
+        gemini_device->setValid(true);
+      }
+
       uint8_t *img_buf_ptr = buffer_.data() + sizeof(platform::UsbCommonPackHead);
-      usb_frame_group_.timestamp = *((int64_t*)img_buf_ptr);
+      usb_frame_group_.timestamp = *((int64_t *) img_buf_ptr);
       img_buf_ptr += sizeof(int64_t);
 
       for (auto &pair : active_frame_infos_) {
@@ -250,8 +292,8 @@ bool GeminiSensor::startStream() {
 
 void GeminiSensor::stopStream() {
   is_streaming_ = false;
-  if (stream_thread.joinable()) {
-    stream_thread.join();
+  if (stream_thread_.joinable()) {
+    stream_thread_.join();
   }
 }
 

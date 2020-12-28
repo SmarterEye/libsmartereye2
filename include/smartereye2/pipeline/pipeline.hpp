@@ -37,13 +37,16 @@ class SMARTEREYE2_API Pipeline {
   template<class T>
   PipelineProfile start(const PipelineConfig &config, T callback);
 
-  void stop();
-  FrameSet waitForFrames(uint32_t timeout_ms = 15000) const;
+  void stop(bool force = false);
+  bool isConnected() const;
+  FrameSet waitForFrames(uint32_t timeout_ms = 1000) const;
   bool pollForFrames(FrameSet *frame_set) const;
-  bool tryWaitForFrames(FrameSet *frame_set, uint32_t timeout_ms = 15000) const;
+  bool tryWaitForFrames(FrameSet *frame_set, uint32_t timeout_ms = 1000) const;
   PipelineProfile getActiveProfile();
+  int64_t registerInternalDeviceCallback(DevicesChangedCallbackPtr callback);
+  void unregisterDevicesChangedCallback(int64_t cb_id);
 
-  operator std::shared_ptr<SePipeline>() const { return pipeline_; }
+  explicit operator std::shared_ptr<SePipeline>() const { return pipeline_; }
   explicit Pipeline(std::shared_ptr<SePipeline> pipeline) : pipeline_(std::move(pipeline)) {}
 
  private:

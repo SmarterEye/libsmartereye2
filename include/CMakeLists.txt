@@ -12,7 +12,6 @@ target_sources(${LSE2_TARGET}
 
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/context.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/device.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/device_hub.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/device_list.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/calibrated_device.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/device/record_playback.hpp"

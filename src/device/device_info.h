@@ -52,14 +52,15 @@ class DeviceInfo : public noncopyable {
 
 class ReadonlyDeviceInfo : public DeviceInfo {
  public:
-  explicit ReadonlyDeviceInfo(const std::shared_ptr<DeviceInterface> &dev) : DeviceInfo(dev->getContext()) {}
+  explicit ReadonlyDeviceInfo(const std::shared_ptr<DeviceInterface> &dev)
+      : DeviceInfo(dev->getContext()), dev_(dev) {}
 
   std::shared_ptr<DeviceInterface> createDevice(bool register_device_notifications) const override {
     return dev_;
   }
 
   platform::BackendDeviceGroup getDeviceData() const override {
-    return platform::BackendDeviceGroup({platform::PlaybackDeviceInfo{dev_->getFileName()}});
+    return dev_->getDeviceData();
   }
 
   std::shared_ptr<DeviceInterface> create(std::shared_ptr<ContextPrivate> ctx,
@@ -68,7 +69,7 @@ class ReadonlyDeviceInfo : public DeviceInfo {
   }
 
  private:
-  std::shared_ptr<PlaybackDevice> dev_;
+  std::shared_ptr<DeviceInterface> dev_;
 };
 
 class PlaybackDeviceInfo : public DeviceInfo {

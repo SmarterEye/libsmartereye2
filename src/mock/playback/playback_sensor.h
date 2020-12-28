@@ -22,7 +22,7 @@
 
 namespace libsmartereye2 {
 
-class FrameHolder;
+struct FrameHolder;
 class Dispatcher;
 
 class PlaybackSensor : public SensorInterface,

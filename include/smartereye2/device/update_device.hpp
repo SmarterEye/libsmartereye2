@@ -19,7 +19,7 @@
 
 namespace se2 {
 
-class UpdateDevice : public Device {
+class SMARTEREYE2_API UpdateDevice : public Device {
  public:
   UpdateDevice();
   explicit UpdateDevice(const Device& device);

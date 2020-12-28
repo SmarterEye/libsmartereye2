@@ -103,7 +103,6 @@ struct SeVector3f {
 typedef struct SeDevice SeDevice;
 typedef struct SeDeviceInfo SeDeviceInfo;
 typedef struct SeDeviceList SeDeviceList;
-typedef struct SeDeviceHub SeDeviceHub;
 
 typedef struct SeSensor SeSensor;
 typedef struct SeNotification SeNotification;

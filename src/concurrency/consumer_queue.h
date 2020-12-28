@@ -45,11 +45,11 @@ class ConsumerQueue {
   }
 
   void blockingEnqueue(T &&item) {
+    auto pred = [this]() -> bool { return (queue_.size() < capacity_ || need_to_flush_); };
+
     std::unique_lock<std::mutex> lock(mutex_);
     if (accepting_) {
-      enq_cv_.wait(lock, [this]() -> bool {
-        return (queue_.size() < capacity_ || need_to_flush_);
-      });
+      enq_cv_.wait(lock, pred);
       queue_.push_back(std::move(item));
     }
     lock.unlock();
@@ -60,12 +60,12 @@ class ConsumerQueue {
     std::unique_lock<std::mutex> lock(mutex_);
     accepting_ = true;
     was_flushed_ = true;
-    const auto ready = [this]() -> bool { return !queue_.empty() || need_to_flush_; };
+    const auto ready = [this]() -> bool { return queue_.size() > 0 || need_to_flush_; };
     if (!ready() && !deq_cv_.wait_for(lock, std::chrono::milliseconds(timeout_ms), ready)) {
       return false;
     }
 
-    if (queue_.empty()) return false;
+    if (queue_.size() <= 0) return false;
 
     *item = std::move(queue_.front());
     queue_.pop_front();
@@ -111,7 +111,10 @@ class ConsumerQueue {
     accepting_ = true;
   }
 
-  size_t size() const { return queue_.size(); }
+  size_t size() const {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return queue_.size();
+  }
 
  private:
   std::deque<T> queue_;

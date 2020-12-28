@@ -33,7 +33,7 @@ class GeminiDevice : public DevicePrivate {
   std::vector<TaggedProfile> getProfilesTags() const override { return std::vector<TaggedProfile>(); }
   void tagProfiles(StreamProfiles profiles) const override {}
 
-  std::shared_ptr<GeminiSensor> getGeminiSensor() const { return nullptr; }
+  std::shared_ptr<GeminiSensor> getGeminiSensor() const { return sensor_; }
 
  private:
   std::shared_ptr<GeminiSensor> sensor_;

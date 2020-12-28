@@ -22,7 +22,7 @@ Dispatcher::Dispatcher(unsigned int cap)
       was_flushed_(false),
       is_alive_(true) {
   thread_ = std::thread([&]() {
-    int timeout_ms = 5000;
+    int timeout_ms = 500000;
     while (is_alive_) {
       std::function<void(CancellableTimer)> item;
 

@@ -52,11 +52,6 @@ std::shared_ptr<CommandTransfer> StandardBackend::createUsbDevice(UsbDeviceInfo 
 
 std::vector<UsbDeviceInfo> StandardBackend::queryUsbDevices() const {
   auto device_infos = UsbEnumerator::queryDevicesInfo();
-
-//  if (tm_boot(device_infos)) {
-//    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-//    device_infos = usb_enumerator::query_devices_info();
-//  }
   return device_infos;
 }
 
@@ -68,9 +63,12 @@ std::shared_ptr<DeviceWather> StandardBackend::createDeviceWatcher() const {
   return std::make_shared<PollingDeviceWatcher>(this);
 }
 
-PollingDeviceWatcher::PollingDeviceWatcher(const Backend *backend_ref)
-    : backend_(backend_ref),
-      devices_data_(backend_->queryUsbDevices()) {
+PollingDeviceWatcher::PollingDeviceWatcher(const Backend *backend)
+    : backend_(backend),
+      repeat_operation_([this](Dispatcher::CancellableTimer timer) {
+        polling(timer);
+      }),
+      discovered_devices_() {
 }
 
 PollingDeviceWatcher::~PollingDeviceWatcher() {
@@ -78,13 +76,13 @@ PollingDeviceWatcher::~PollingDeviceWatcher() {
 }
 
 void PollingDeviceWatcher::polling(Dispatcher::CancellableTimer timer) {
-  if (timer.trySleep(5000)) {
+  if (timer.trySleep(1000)) {
     platform::BackendDeviceGroup curr(backend_->queryUsbDevices());
-    if (listChanged(devices_data_.usb_devices, curr.usb_devices)) {
+    if (listChanged(discovered_devices_.usb_devices, curr.usb_devices)) {
       CallbackInvocationHolder callback = {callback_inflight_.allocate(), &callback_inflight_};
       if (callback) {
-        callback_(devices_data_, curr);
-        devices_data_ = curr;
+        callback_(discovered_devices_, curr);
+        discovered_devices_ = curr;
       }
     }
   }
@@ -93,9 +91,11 @@ void PollingDeviceWatcher::polling(Dispatcher::CancellableTimer timer) {
 void PollingDeviceWatcher::start(DeviceChangedCallback callback) {
   stop();
   callback_ = std::move(callback);
+  repeat_operation_.start();
 }
 
 void PollingDeviceWatcher::stop() {
+  repeat_operation_.stop();
   callback_inflight_.waitUntilEmpty();
 }
 

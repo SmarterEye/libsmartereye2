@@ -14,26 +14,24 @@
 
 #include "gemini_info.h"
 
+#include <utility>
+
 #include "gemini_device.h"
 #include "easylogging++.h"
 
-#define IDVENDOR  0xF525
-#define IDPRODUCT 0xC4a0
+#define GENIMI_IDVENDOR  0xF525
+#define GEMINI_IDPRODUCT 0xC4a0
 
 namespace libsmartereye2 {
 
-GeminiInfo::GeminiInfo(std::shared_ptr<ContextPrivate> ctx, platform::UsbDeviceInfo xx)
-    : DeviceInfo(ctx), abc_(std::move(xx)) {
-  LOG(DEBUG) << "GeminiInfo created for " << this;
+GeminiInfo::GeminiInfo(std::shared_ptr<ContextPrivate> ctx, platform::UsbDeviceInfo info)
+    : DeviceInfo(std::move(ctx)), usb_device_info_(std::move(info)) {
 }
 
-GeminiInfo::~GeminiInfo() {
-  LOG(DEBUG) << "GeminiInfo destroyed for " << this;
-}
+GeminiInfo::~GeminiInfo() = default;
 
 platform::BackendDeviceGroup GeminiInfo::getDeviceData() const {
-  LOG(DEBUG) << "GeminiInfo::getDeviceData " << this;
-  return platform::BackendDeviceGroup({abc_});
+  return platform::BackendDeviceGroup({usb_device_info_});
 }
 
 std::shared_ptr<DeviceInterface> GeminiInfo::create(std::shared_ptr<ContextPrivate> ctx,
@@ -42,11 +40,11 @@ std::shared_ptr<DeviceInterface> GeminiInfo::create(std::shared_ptr<ContextPriva
   return std::make_shared<GeminiDevice>(ctx, getDeviceData(), register_device_notifications);
 }
 
-std::vector<std::shared_ptr<DeviceInfo>> GeminiInfo::pikachu(std::shared_ptr<ContextPrivate> ctx,
-                                                             std::vector<platform::UsbDeviceInfo> &usb_infos) {
+std::vector<std::shared_ptr<DeviceInfo>> GeminiInfo::pickup(const std::shared_ptr<ContextPrivate>& ctx,
+                                                            const std::vector<platform::UsbDeviceInfo> &usb_infos) {
   std::vector<std::shared_ptr<DeviceInfo>> matched_list;
   for (const auto &it : usb_infos) {
-      if (it.vid == IDVENDOR && it.pid == IDPRODUCT) {
+      if (it.vid == GENIMI_IDVENDOR && it.pid == GEMINI_IDPRODUCT) {
         std::shared_ptr<DeviceInfo> gemini_device(new GeminiInfo(ctx, it));
         matched_list.push_back(gemini_device);
         break;

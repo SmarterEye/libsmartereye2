@@ -29,7 +29,7 @@ namespace libsmartereye2 {
 
 DevicePrivate::~DevicePrivate() {
   if (device_changed_notifications_) {
-    context_->unregisterInternalDeviceCallback(callback_id_);
+    context_->unregisterDevicesChangedCallback(callback_id_);
   }
   sensors_.clear();
 }
@@ -38,7 +38,7 @@ SensorInterface &DevicePrivate::getSensor(size_t i) {
   try {
     return *(sensors_.at(i));
   }
-  catch (std::out_of_range) {
+  catch (std::out_of_range &e) {
     LOG(ERROR) << "invalid subdevice value";
     throw std::exception();
   }
@@ -48,7 +48,7 @@ const SensorInterface &DevicePrivate::getSensor(size_t i) const {
   try {
     return *(sensors_.at(i));
   }
-  catch (std::out_of_range) {
+  catch (std::out_of_range &e) {
     LOG(ERROR) << "invalid subdevice value";
     throw std::exception();
   }
@@ -102,6 +102,11 @@ void DevicePrivate::tagProfiles(StreamProfiles profiles) const {
   }
 }
 
+void DevicePrivate::setValid(bool is_valid) {
+  std::lock_guard<std::mutex> lock(device_changed_mtx_);
+  is_valid_ = is_valid;
+}
+
 int DevicePrivate::addSensor(const std::shared_ptr<SensorInterface> &sensor_base) {
   sensors_.push_back(sensor_base);
   return static_cast<int>(sensors_.size()) - 1;
@@ -112,7 +117,7 @@ int DevicePrivate::assignSensor(const std::shared_ptr<SensorInterface> &sensor_b
     sensors_[idx] = sensor_base;
     return (int) sensors_.size() - 1;
   }
-  catch (std::out_of_range) {
+  catch (std::out_of_range &e) {
     throw std::runtime_error(toString() << "Cannot assign sensor - invalid subdevice value" << idx);
   }
 }
@@ -140,23 +145,6 @@ DevicePrivate::DevicePrivate(std::shared_ptr<ContextPrivate> context,
       is_valid_(true),
       device_changed_notifications_(device_changed_notifications) {
 
-//  profiles_tags_ = lazy<std::vector<tagged_profile>>([this]() { return get_profiles_tags(); });
-//
-//  if (_device_changed_notifications) {
-//    auto cb = new devices_changed_callback_internal([this](rs2_device_list *removed, rs2_device_list *added) {
-//      // Update is_valid variable when device is invalid
-//      std::lock_guard<std::mutex> lock(_device_changed_mtx);
-//      for (auto &dev_info : removed->list) {
-//        if (dev_info.info->get_device_data() == _group) {
-//          _is_valid = false;
-//          return;
-//        }
-//      }
-//    });
-//
-//    _callback_id =
-//        _context->register_internal_device_callback({cb, [](rs2_devices_changed_callback *p) { p->release(); }});
-//  }
 }
 
 }  // namespace libsmartereye2

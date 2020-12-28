@@ -19,7 +19,7 @@
 
 namespace se2 {
 
-class CalibratedDevice : public Device {
+class SMARTEREYE2_API CalibratedDevice : public Device {
  public:
   explicit CalibratedDevice(const Device &device);
 

@@ -15,6 +15,7 @@
 #ifndef LIBSMARTEREYE2_DISPATCHER_H
 #define LIBSMARTEREYE2_DISPATCHER_H
 
+#include <iostream>
 #include <queue>
 #include <functional>
 #include <thread>
@@ -101,6 +102,44 @@ class Dispatcher {
   std::mutex blocking_invoke_mutex_;
 
   std::atomic<bool> is_alive_;
+};
+
+template<class T = std::function<void(Dispatcher::CancellableTimer)>>
+class RepeatOperation {
+ public:
+  explicit RepeatOperation(T operation)
+      : operation_(std::move(operation)), dispatcher_(1), stopped_(true) {
+  }
+
+  void start() {
+    stopped_ = false;
+    dispatcher_.start();
+
+    loop();
+  }
+
+  void stop() {
+    stopped_ = true;
+    dispatcher_.stop();
+  }
+
+  ~RepeatOperation() {
+    stop();
+  }
+
+ private:
+  void loop() {
+    dispatcher_.invoke([this](Dispatcher::CancellableTimer ct) {
+      operation_(ct);
+      if (!stopped_) {
+        loop();
+      }
+    });
+  }
+
+  T operation_;
+  Dispatcher dispatcher_;
+  std::atomic<bool> stopped_;
 };
 
 }  // namespace libsmartereye2

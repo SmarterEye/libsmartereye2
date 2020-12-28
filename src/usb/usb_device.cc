@@ -23,18 +23,18 @@ namespace libsmartereye2 {
 
 namespace platform {
 
-auto foo = [](const libusb_interface &inf, std::vector<UsbDescriptor> _descriptors) {
+auto getDescFromInterface = [](const libusb_interface &inf, std::vector<UsbDescriptor> descriptors) {
   for (int j = 0; j < inf.num_altsetting; j++) {
     auto d = inf.altsetting[j];
     UsbDescriptor ud = {d.bLength, d.bDescriptorType, std::vector<uint8_t>(d.bLength)};
     memcpy(ud.data.data(), &d, d.bLength);
-    _descriptors.push_back(ud);
+    descriptors.push_back(ud);
     for (int k = 0; k < d.extra_length;) {
       auto l = d.extra[k];
       auto dt = d.extra[k + 1];
       UsbDescriptor ud = {l, dt, std::vector<uint8_t>(l)};
       memcpy(ud.data.data(), &d.extra[k], l);
-      _descriptors.push_back(ud);
+      descriptors.push_back(ud);
       k += l;
     }
   }
@@ -62,30 +62,44 @@ UsbDevice::UsbDevice(libusb_device *device,
 
     std::shared_ptr<UsbInterface> current_interface;
     for (auto idx_interface = 0; idx_interface < config->bNumInterfaces; ++idx_interface) {
-      auto xx = config->interface[idx_interface];
-      auto yy = std::make_shared<UsbInterface>(&xx);
-      interfaces_.push_back(yy);
+      auto inf = config->interface[idx_interface];
+      auto usb_interface = std::make_shared<UsbInterface>(&inf);
+      interfaces_.push_back(usb_interface);
 
-      uint8_t usb_class = xx.altsetting->bInterfaceClass;
-      uint8_t usb_sub_class = xx.altsetting->bInterfaceSubClass;
+      uint8_t usb_class = inf.altsetting->bInterfaceClass;
+      uint8_t usb_sub_class = inf.altsetting->bInterfaceSubClass;
       if (usb_class == SE2_USB_CLASS_VIDEO) {
         if (usb_sub_class == SE2_USB_SUBCLASS_VIDEO_CONTROL) {
-          current_interface = yy;
+          current_interface = usb_interface;
         }
         if (usb_sub_class == SE2_USB_SUBCLASS_VIDEO_STREAMING) {
-          current_interface->addAssociatedInterface(yy);
+          current_interface->addAssociatedInterface(usb_interface);
         }
       }
 
-      foo(xx, descriptors_);
+      getDescFromInterface(inf, descriptors_);
     }
     libusb_free_config_descriptor(config);
   }
-//  libusb_ref_device(device_);
+
+  libusb_hotplug_callback_fn cb = [](libusb_context *ctx,
+                                     libusb_device *device,
+                                     libusb_hotplug_event event,
+                                     void *user_data) -> int {
+    if (LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT == event) {
+      LOG(INFO) << "usb disconnected~~~";
+    }
+    return 0;
+  };
+  // not supported on Windows
+  libusb_hotplug_register_callback(context_->get(), LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE,
+                                   info_.vid, info_.pid, LIBUSB_HOTPLUG_MATCH_ANY, cb, nullptr, &hotplug_cb_handle_);
+  libusb_ref_device(device_);
 }
 
 UsbDevice::~UsbDevice() {
-//  libusb_unref_device(device_);
+  libusb_hotplug_deregister_callback(context_->get(), hotplug_cb_handle_);
+  libusb_unref_device(device_);
 }
 
 SeUsbInterface UsbDevice::getInterface(uint8_t interface_number) const {

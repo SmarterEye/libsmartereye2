@@ -17,13 +17,14 @@
 
 #include "smartereye2/se_types.hpp"
 #include "smartereye2/streaming/stream_types.hpp"
+#include "smartereye2/se_global.hpp"
 
 namespace se2 {
 
 class StreamProfile;
 class Device;
 
-class PipelineProfile {
+class SMARTEREYE2_API PipelineProfile {
  public:
   PipelineProfile() : pipeline_profile_(nullptr) {}
   explicit PipelineProfile(std::shared_ptr<SePipelineProfile> profile) : pipeline_profile_(std::move(profile)) {}

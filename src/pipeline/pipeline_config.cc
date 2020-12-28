@@ -95,17 +95,6 @@ std::shared_ptr<PipelineProfilePrivate> PipelineConfigPrivate::resolve(std::shar
     return resolved_profile_;
   }
 
-  auto devs = pipe->getContext()->queryDevices(ProductCode::SE_PRODUCT_ANY);
-  for (const auto &dev_info : devs) {
-    try {
-      auto dev = dev_info->createDevice(true);
-      resolved_profile_ = resolve(dev);
-      return resolved_profile_;
-    } catch (const std::exception &e) {
-      LOG(DEBUG) << "Iterate available devices - config can not be resolved. " << e.what();
-    }
-  }
-
   auto dev = pipe->waitForDevice(timeout);
   if (dev) {
     resolved_profile_ = resolve(dev);

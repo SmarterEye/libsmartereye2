@@ -51,7 +51,7 @@ struct SeDeviceList {
 namespace libsmartereye2 {
 
 class Matcher;
-class FrameHolder;
+struct FrameHolder;
 class ContextPrivate;
 
 class DeviceInterface : public virtual InfoInterface, public std::enable_shared_from_this<DeviceInterface> {
@@ -90,6 +90,7 @@ class DevicePrivate : public virtual DeviceInterface, public InfoContainer {
   std::shared_ptr<Matcher> createMatcher(const FrameHolder &frame) const override {return nullptr;}
 
  protected:
+  void setValid(bool is_valid);
   int addSensor(const std::shared_ptr<SensorInterface> &sensor_base);
   int assignSensor(const std::shared_ptr<SensorInterface> &sensor_base, int8_t idx);
   void registerStreamToExtrinsicGroup(const StreamProfileBase &stream, int32_t groupd_index);

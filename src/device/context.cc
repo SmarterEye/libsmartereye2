@@ -37,8 +37,7 @@ namespace libsmartereye2 {
 using platform::BackendType;
 
 ContextPrivate::ContextPrivate(platform::BackendType type, const std::string &filename, const std::string &section)
-    : backend_(nullptr),
-      devices_changed_callback_(nullptr, [](SeDevicesChangedCallback *) {}) {
+    : backend_(nullptr) {
   switch (type) {
     case BackendType::STANDARD: {
       backend_ = std::make_shared<platform::StandardBackend>();
@@ -60,35 +59,42 @@ ContextPrivate::ContextPrivate(platform::BackendType type, const std::string &fi
   device_watcher_ = backend_->createDeviceWatcher();
 }
 
+ContextPrivate::~ContextPrivate() {
+  for (auto iter = devices_changed_callbacks_.begin(); iter != devices_changed_callbacks_.end();) {
+    iter = devices_changed_callbacks_.erase(iter);
+  }
+}
+
+void ContextPrivate::start() {
+  device_watcher_->start([this](platform::BackendDeviceGroup old, platform::BackendDeviceGroup curr) {
+    onDeviceChanged(std::move(old), std::move(curr), playback_devices_, playback_devices_);
+  });
+}
+
 void ContextPrivate::stop() {
   device_watcher_->stop();
 }
 
 std::vector<std::shared_ptr<DeviceInfo>> ContextPrivate::queryDevices(int mask) const {
   platform::BackendDeviceGroup devices(backend_->queryUsbDevices());
-  return createDevices(devices, playback_devices_, mask);
+  auto device_list = createDevices(devices, playback_devices_, mask);
+  LOG(INFO) << "Found " << device_list.size() << " SmarterEye devices (mask " << mask << ")";
+  return device_list;
 }
 
-int64_t ContextPrivate::registerInternalDeviceCallback(DevicesChangedCallbackPtr callback) {
-  std::lock_guard<std::mutex> lock(_devices_changed_callbacks_mtx);
+int64_t ContextPrivate::registerDevicesChangedCallback(DevicesChangedCallbackPtr callback) {
+  if (callback == nullptr) return -1;
+
+  std::lock_guard<std::mutex> lock(devices_changed_callbacks_mtx_);
   auto callback_id = util::UniqueId::generateId();
   devices_changed_callbacks_.insert(std::make_pair(callback_id, std::move(callback)));
 
   return callback_id;
 }
 
-void ContextPrivate::unregisterInternalDeviceCallback(int64_t cb_id) {
-  std::lock_guard<std::mutex> lock(_devices_changed_callbacks_mtx);
+void ContextPrivate::unregisterDevicesChangedCallback(int64_t cb_id) {
+  std::lock_guard<std::mutex> lock(devices_changed_callbacks_mtx_);
   devices_changed_callbacks_.erase(cb_id);
-}
-
-void ContextPrivate::setDevicesChangedCallback(DevicesChangedCallbackPtr callback) {
-  device_watcher_->stop();
-
-  devices_changed_callback_ = std::move(callback);
-  device_watcher_->start([this](platform::BackendDeviceGroup old, platform::BackendDeviceGroup curr) {
-    onDeviceChanged(std::move(old), std::move(curr), playback_devices_, playback_devices_);
-  });
 }
 
 std::vector<std::shared_ptr<DeviceInfo>>
@@ -101,7 +107,7 @@ ContextPrivate::createDevices(platform::BackendDeviceGroup devices,
   auto ctx = t->shared_from_this();
 
   if (mask & ProductCode::SE_PRODUCT_GEMINI) {
-    auto gemini_devices = GeminiInfo::pikachu(ctx, devices.usb_devices);
+    auto gemini_devices = GeminiInfo::pickup(ctx, devices.usb_devices);
     std::copy(gemini_devices.begin(), gemini_devices.end(), std::back_inserter(matched_list));
   }
 
@@ -111,11 +117,10 @@ ContextPrivate::createDevices(platform::BackendDeviceGroup devices,
     if (auto dev = item.second.lock()) result_list.push_back(dev);
   }
 
-  LOG(INFO) << "Found " << result_list.size() << " SmarterEye devices (mask " << mask << ")";
   return result_list;
 }
 
-std::shared_ptr<PlaybackDeviceInfo> ContextPrivate::addDevice(const std::string &file) {
+std::shared_ptr<PlaybackDeviceInfo> ContextPrivate::addPlaybackDevice(const std::string &file) {
   auto it = playback_devices_.find(file);
   if (it != playback_devices_.end() && it->second.lock()) {
     //Already exists
@@ -145,19 +150,31 @@ void ContextPrivate::onDeviceChanged(platform::BackendDeviceGroup old,
                                                                          });
   if (changed_flag) {
     std::vector<SeDeviceInfo> devices_info_added, devices_info_removed;
-    // TODO
+    auto removed_vec = subtractSets(old_list, new_list);
+    auto added_vec = subtractSets(new_list, old_list);
+
+    for (const auto &removed : removed_vec) {
+      devices_info_removed.push_back({shared_from_this(), removed});
+    }
+    for (const auto &added : added_vec) {
+      devices_info_added.push_back({shared_from_this(), added});
+    }
+
     raiseDevicesChanged(devices_info_removed, devices_info_added);
   }
 }
 
 void ContextPrivate::raiseDevicesChanged(const std::vector<SeDeviceInfo> &removed,
                                          const std::vector<SeDeviceInfo> &added) {
-  if (devices_changed_callback_) {
-    try {
-      devices_changed_callback_->onDevicesChanged(new SeDeviceList{shared_from_this(), removed},
-                                                  new SeDeviceList{shared_from_this(), removed});
-    } catch (...) {
-      LOG(ERROR) << "Exception thrown from user callback handler";
+  for (const auto &kvp : devices_changed_callbacks_) {
+    auto cb = kvp.second;
+    if (cb) {
+      try {
+        cb->onDevicesChanged(new SeDeviceList{shared_from_this(), removed},
+                             new SeDeviceList{shared_from_this(), added});
+      } catch (...) {
+        LOG(ERROR) << "Exception thrown from user callback handler";
+      }
     }
   }
 }
@@ -166,7 +183,7 @@ void ContextPrivate::raiseDevicesChanged(const std::vector<SeDeviceInfo> &remove
 
 namespace se2 {
 
-bool EventInfomation::wasRemoved(const Device &dev) const {
+bool DeviceChangedEvent::wasRemoved(const Device &dev) const {
   if (!dev) return false;
 
   bool ok = false;
@@ -179,7 +196,7 @@ bool EventInfomation::wasRemoved(const Device &dev) const {
   return ok;
 }
 
-bool EventInfomation::wasAdded(const Device &dev) const {
+bool DeviceChangedEvent::wasAdded(const Device &dev) const {
   if (!dev) return false;
 
   bool ok = false;
@@ -192,9 +209,9 @@ bool EventInfomation::wasAdded(const Device &dev) const {
   return ok;
 }
 
-Context::Context() {
-  auto xx = std::make_shared<libsmartereye2::ContextPrivate>(libsmartereye2::platform::BackendType::STANDARD);
-  context_ = std::make_shared<SeContext>(SeContext{xx});
+Context::Context() : context_(nullptr) {
+  auto ctx = std::make_shared<libsmartereye2::ContextPrivate>(libsmartereye2::platform::BackendType::STANDARD);
+  context_ = std::make_shared<SeContext>(SeContext{ctx});
 }
 
 Context::Context(std::shared_ptr<SeContext> context)
@@ -235,6 +252,18 @@ std::vector<Sensor> Context::queryAllSensors() const {
 Device Context::getSensorParent(const Sensor &sensor) const {
   std::shared_ptr<SeDevice> dev(new SeDevice(*sensor.get()->parent));
   return Device{dev};
+}
+
+DevicesChangedCallback::DevicesChangedCallback(DeviceChangeFunction callback)
+    : callback_(std::move(callback)) {
+}
+
+void DevicesChangedCallback::onDevicesChanged(SeDeviceList *removed, SeDeviceList *added) {
+  std::shared_ptr<SeDeviceList> old(removed);
+  std::shared_ptr<SeDeviceList> news(added);
+
+  DeviceChangedEvent info((DeviceList(old)), DeviceList(news));
+  callback_(info);
 }
 
 }  // namespace se2
