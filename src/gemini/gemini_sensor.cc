@@ -328,7 +328,6 @@ void GeminiSensor::handle_received_frames() {
       video->setTimestampDomain(TimestampDomain::SYSTEM_TIME);
       video->setStream(profile);
       video->setSensor(shared_from_this());
-      video->data().resize(info->data_size, 0);
       if (with_embededline) {
         auto raw_frame_with_embededline = reinterpret_cast<RawUsbImageFrame4Embededline *>(data_ptr);
         int embededline_size = sizeof(raw_frame_with_embededline->embededline);
@@ -336,9 +335,12 @@ void GeminiSensor::handle_received_frames() {
         video->extension().metadata_blob.resize(embededline_size);
         video->extension().metadata_blob.assign(raw_frame_with_embededline->embededline,
                                                 raw_frame_with_embededline->embededline + embededline_size);
-        video->data().assign(raw_frame_with_embededline->image, raw_frame_with_embededline->image + info->data_size);
+        auto img_size = info->data_size - 1280;
+        video->data().resize(img_size, 0);
+        video->data().assign(raw_frame_with_embededline->image, raw_frame_with_embededline->image + img_size);
       } else {
         auto raw_frame = reinterpret_cast<RawUsbImageFrame *>(data_ptr);
+        video->data().resize(info->data_size, 0);
         video->data().assign(raw_frame->image, raw_frame->image + info->data_size);
       }
     } else {
