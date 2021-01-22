@@ -37,7 +37,8 @@ void FrameSource::init(std::shared_ptr<MetadataParserMap> metadata_parsers) {
       SeExtension::EXTENSION_DEPTH_FRAME,
       SeExtension::EXTENSION_DISPARITY_FRAME,
       SeExtension::EXTENSION_MOTION_FRAME,
-      SeExtension::EXTENSION_POSE_FRAME
+      SeExtension::EXTENSION_POSE_FRAME,
+      SeExtension::EXTENSION_JOURNEY_FRAME
   };
 
   for (auto type : supported) {
@@ -66,7 +67,7 @@ std::shared_ptr<Option> FrameSource::get_published_size_option() {
 
 FrameInterface *FrameSource::alloc_frame(SeExtension type,
                                          size_t size,
-                                         FrameExtension additional_data,
+                                         const FrameExtension& additional_data,
                                          bool requires_memory) const {
   auto it = archives_.find(type);
   if (it == archives_.end()) {

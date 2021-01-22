@@ -58,6 +58,7 @@ class GeminiDevice : public DevicePrivate {
   platform::UsbStatus reset_usb_endpoint();
 
   friend class GeminiSensor;
+  friend class GeminiSerialPort;
 };
 
 }  // namespace libsmartereye2

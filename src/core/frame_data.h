@@ -198,6 +198,11 @@ class PoseData : public FrameData {
   // TODO
 };
 
+class JourneyFrameData : public FrameData {
+ public:
+
+};
+
 }  // namespace libsmartereye2
 
 #endif //LIBSMARTEREYE2_FRAME_DATA_H

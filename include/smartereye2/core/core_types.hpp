@@ -66,6 +66,7 @@ enum class FrameMetadataValue {
 
 struct FrameExtension {
   uint64_t index = 0;
+  int64_t speed = 0;
   se_time_t timestamp = 0;
   TimestampDomain timestamp_domain = TimestampDomain::SYSTEM_TIME;
   bool is_blocking = false; // when running from recording, this bit indicates

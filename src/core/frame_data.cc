@@ -58,6 +58,11 @@ std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
                                                            ts,
                                                            parsers);
 
+    case SeExtension::EXTENSION_JOURNEY_FRAME:
+      return std::make_shared<FrameArchive<JourneyFrameData>>(in_max_frame_queue_size,
+                                                           ts,
+                                                           parsers);
+
     default:throw std::runtime_error("Requested frame type is not supported!");
   }
 }

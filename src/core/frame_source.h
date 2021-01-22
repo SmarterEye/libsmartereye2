@@ -45,7 +45,7 @@ class FrameSource {
 
   FrameInterface *alloc_frame(SeExtension type,
                               size_t size,
-                              FrameExtension additional_data,
+                              const FrameExtension& additional_data,
                               bool requires_memory) const;
 
   void set_callback(FrameCallbackPtr callback);

@@ -20,7 +20,7 @@
 namespace libsmartereye2 {
 
 class GeminiDevice;
-class PlaybackDevice;
+class GeminiSerialPort;
 
 struct UsbFrameGroup {
   int32_t frame_count;
@@ -62,6 +62,8 @@ class GeminiSensor : public SensorBase, public VideoSensorInterface {
   void stopStream();
 
  private:
+  friend class GeminiSerialPort;
+
   mutable std::mutex operation_lock_;
 
   std::vector<platform::UsbFrameInfo> supported_frame_infos_;
@@ -70,6 +72,11 @@ class GeminiSensor : public SensorBase, public VideoSensorInterface {
 
   UsbFrameGroup usb_frame_group_{};
   std::vector<uint8_t> buffer_;
+
+  // virtual COM
+  std::queue<uint32_t> j2counter_queue_;
+  std::map<uint32_t, int64_t> j2counter_to_timestamp_;
+  std::shared_ptr<GeminiSerialPort> serial_port_;
 
   // threaded dispatch
   std::shared_ptr<Dispatcher> data_dispatcher_;

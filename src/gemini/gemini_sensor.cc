@@ -14,6 +14,7 @@
 
 #include "gemini_sensor.h"
 #include "gemini_device.h"
+#include "gemini_serial_port.h"
 #include "streaming/stream_profile.h"
 #include "core/frame_data.h"
 #include "easylogging++.h"
@@ -197,6 +198,7 @@ void GeminiSensor::start(FrameCallbackPtr callback) {
 
   frame_source_->set_callback(callback);
   startStream();
+  serial_port_->open();
 }
 
 void GeminiSensor::stop() {
@@ -211,6 +213,7 @@ void GeminiSensor::stop() {
   }
 
   stopStream();
+  serial_port_->close();
 }
 
 Intrinsics GeminiSensor::getIntrinsics() const {
@@ -223,6 +226,8 @@ void GeminiSensor::init() {
   device_owner_->tagProfiles(profiles_);
   frame_source_->set_max_publish_list_size(256);
   data_dispatcher_ = std::make_shared<Dispatcher>(256);
+
+  serial_port_ = std::make_shared<GeminiSerialPort>(this);
 }
 
 void GeminiSensor::dispose() {
@@ -298,10 +303,10 @@ void GeminiSensor::stopStream() {
 }
 
 void GeminiSensor::handle_received_frames() {
+  auto timestamp = usb_frame_group_.timestamp;
+
   for (auto &pair : active_frame_infos_) {
     auto index = pair.first;
-
-    auto timestamp = usb_frame_group_.timestamp;
     auto info = usb_frame_group_.frame_infos[index];
     auto frame_id = static_cast<FrameId>(info->frame_id);
     auto frame_format = static_cast<FrameFormat>(info->frame_format);
@@ -319,6 +324,7 @@ void GeminiSensor::handle_received_frames() {
 
     FrameExtension frame_ext;
     frame_ext.index = frame_index;
+    frame_ext.speed = serial_port_->speed_;
     FrameHolder frame_holder(frame_source_->alloc_frame(SeExtension::EXTENSION_VIDEO_FRAME,
                                                         info->data_size, frame_ext, true));
     if (frame_holder.frame) {
@@ -330,11 +336,26 @@ void GeminiSensor::handle_received_frames() {
       video->setSensor(shared_from_this());
       if (with_embededline) {
         auto raw_frame_with_embededline = reinterpret_cast<RawUsbImageFrame4Embededline *>(data_ptr);
-        int embededline_size = sizeof(raw_frame_with_embededline->embededline);
+        auto embededline_size = sizeof(raw_frame_with_embededline->embededline);
+
+        // record j2 timestamp
+        if (frame_id == FrameId::LeftCamera) {
+          // get j2counter from embededline first 4 bytes
+          uint32_t j2counter = *reinterpret_cast<uint32_t*>(raw_frame_with_embededline->embededline);
+          j2counter_queue_.push(j2counter);
+          j2counter_to_timestamp_[j2counter] = timestamp;
+
+          if (j2counter_to_timestamp_.size() > 25) {
+            j2counter_to_timestamp_.erase(j2counter_queue_.front());
+            j2counter_queue_.pop();
+          }
+        }
+
         video->extension().metadata_value = FrameMetadataValue::EmbededLine;
         video->extension().metadata_blob.resize(embededline_size);
         video->extension().metadata_blob.assign(raw_frame_with_embededline->embededline,
                                                 raw_frame_with_embededline->embededline + embededline_size);
+
         auto img_size = info->data_size - 1280;
         video->data().resize(img_size, 0);
         video->data().assign(raw_frame_with_embededline->image, raw_frame_with_embededline->image + img_size);
