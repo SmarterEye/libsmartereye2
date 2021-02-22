@@ -16,6 +16,9 @@
 #include "streaming/streaming.h"
 #include "streaming/stream_profile.h"
 
+#include "alg/obstacleData.h"
+#include "alg/LdwDataInterface.h"
+
 namespace libsmartereye2 {
 
 std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
@@ -62,6 +65,16 @@ std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
       return std::make_shared<FrameArchive<JourneyFrameData>>(in_max_frame_queue_size,
                                                            ts,
                                                            parsers);
+
+    case SeExtension::EXTENSION_OBSTACLE_FRAME:
+      return std::make_shared<FrameArchive<ObstacleFrameData>>(in_max_frame_queue_size,
+                                                              ts,
+                                                              parsers);
+
+    case SeExtension::EXTENSION_LANE_FRAME:
+      return std::make_shared<FrameArchive<LaneFrameData>>(in_max_frame_queue_size,
+                                                              ts,
+                                                              parsers);
 
     default:throw std::runtime_error("Requested frame type is not supported!");
   }
@@ -135,8 +148,12 @@ int64_t FrameData::getFrameIndex() const {
   return extension_data_.index;
 }
 
-std::shared_ptr<StreamProfileInterface> FrameData::getStream() const {
-  return stream_;
+int64_t FrameData::getSpeed() const {
+  return extension_data_.speed;
+}
+
+std::shared_ptr<StreamProfileInterface> FrameData::getStreamProfile() const {
+  return stream_profile_;
 }
 
 void FrameData::setTimestamp(double new_ts) {
@@ -147,8 +164,8 @@ void FrameData::setTimestampDomain(TimestampDomain timestamp_domain) {
   extension_data_.timestamp_domain = timestamp_domain;
 }
 
-void FrameData::setStream(std::shared_ptr<StreamProfileInterface> sp) {
-  stream_ = sp;
+void FrameData::setStreamProfile(std::shared_ptr<StreamProfileInterface> sp) {
+  stream_profile_ = sp;
 }
 
 void FrameData::acquire() {
@@ -204,7 +221,7 @@ void DepthFrameData::keep() {
 }
 
 float DepthFrameData::distance(int x, int y) const {
-  if (original_ && getStream()->format() != FrameFormat::Disparity16) {
+  if (original_ && getStreamProfile()->format() != FrameFormat::Disparity16) {
     return (reinterpret_cast<DepthFrameData *>(original_.frame))->distance(x, y);
   }
 
@@ -285,6 +302,15 @@ const TextureCoordinate *PointsData::textureCoordinate() const {
 
 void PointsData::exportToPly(const std::string &fname, const FrameHolder &texture) {
 
+}
+
+void ObstacleFrameData::loadObstacles(const uint8_t *data, uint32_t data_size) {
+  int *num_ptr = (int *) data;
+  auto *obs_ptr = (OutputObstacles *) (num_ptr + 2);
+  num_ = *num_ptr;
+  for (int i = 0; i < num_; i++) {
+    obstacles_.push_back(std::make_shared<OutputObstacles>(obs_ptr[i]));
+  }
 }
 
 }  // namespace libsmartereye2

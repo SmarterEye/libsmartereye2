@@ -21,6 +21,8 @@
 #include "smartereye2/se_callbacks.hpp"
 #include "smartereye2/streaming/stream_profile.hpp"
 
+struct OutputObstacles;
+
 namespace se2 {
 
 class SMARTEREYE2_API Frame {
@@ -64,10 +66,11 @@ class SMARTEREYE2_API Frame {
   StreamProfile getProfile() const;
 
   double timestamp() const;
-  const char* getFrameMetadata(FrameMetadataValue frame_metadata) const;
+  const char *getFrameMetadata(FrameMetadataValue frame_metadata) const;
   size_t getFrameMetadataSize() const;
   bool supportsFrameMetadata(FrameMetadataValue frame_metadata) const;
   int64_t getFrameIndex() const;
+  int64_t getSpeed() const;
   size_t dataSize() const;
   const char *data() const;
 
@@ -149,13 +152,20 @@ class SMARTEREYE2_API MotionFrame : public Frame {
   SeVector3f getMotionData() const;
 };
 
+class SMARTEREYE2_API ObstacleFrame : public Frame {
+ public:
+  explicit ObstacleFrame(const Frame &frame) : Frame(frame) {}
+  int num() const;
+  std::vector<std::shared_ptr<OutputObstacles>> obstacles() const;
+};
+
 template<class T>
 class FramCallback : public SeFrameCallback {
   T on_frame_function_;
 
  public:
   explicit FramCallback(T on_frame) : on_frame_function_(on_frame) {}
-  void onFrame(SeFrame *frame) override {}
+  void onFrame(libsmartereye2::FrameInterface *frame) override { on_frame_function_(frame); }
   void release() override { delete this; }
 };
 

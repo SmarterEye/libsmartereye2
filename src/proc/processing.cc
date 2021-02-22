@@ -31,7 +31,7 @@ ProcessingBlock::ProcessingBlock(const std::string &name)
 
 void ProcessingBlock::setProcessingCallback(FrameProcessorCallbackPtr callback) {
   std::lock_guard<std::mutex> lock(mutex_);
-  callback_ = callback;
+  processing_callback_ = callback;
 }
 
 void ProcessingBlock::setOutputCallback(FrameCallbackPtr callback) {
@@ -40,19 +40,27 @@ void ProcessingBlock::setOutputCallback(FrameCallbackPtr callback) {
 
 void ProcessingBlock::invoke(FrameHolder frame) {
   auto callback = frame_source_.begin_callback();
-  try {
-    if (callback_) {
-      FrameInterface *frame_ptr = nullptr;
-      std::swap(frame.frame, frame_ptr);
-      auto source = new SeSyntheticSource{&source_wrapper_};
-      callback_->onFrame(frame_ptr, source);
+
+  FrameInterface *frame_ptr = nullptr;
+  std::swap(frame.frame, frame_ptr);
+
+  if (frame_source_.get_callback() != nullptr) {
+    // if frame callback has registered, only invoke frame callback
+    frame_source_.invoke_callback(FrameHolder(frame_ptr));
+  } else {
+    // handle frame for aggregator
+    try {
+      if (processing_callback_) {
+        auto source = new SeSyntheticSource{&source_wrapper_};
+        processing_callback_->onFrame(frame_ptr, source);
+      }
     }
-  }
-  catch (std::exception const &e) {
-    LOG(ERROR) << "Exception was thrown during user processing callback: " << std::string(e.what());
-  }
-  catch (...) {
-    LOG(ERROR) << "Exception was thrown during user processing callback!";
+    catch (std::exception const &e) {
+      LOG(ERROR) << "Exception was thrown during user processing callback: " << std::string(e.what());
+    }
+    catch (...) {
+      LOG(ERROR) << "Exception was thrown during user processing callback!";
+    }
   }
 }
 

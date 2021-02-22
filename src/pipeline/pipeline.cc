@@ -175,7 +175,7 @@ std::shared_ptr<DeviceInterface> PipelinePrivate::waitForDevice(const std::chron
   return device_hub_.waitForDevice(timeout, false, serial);
 }
 
-FrameCallbackPtr PipelinePrivate::getCallback(const std::vector<int> &synced_streams_ids) {
+FrameCallbackPtr PipelinePrivate::getCallback() const {
   auto on_frame_func = [this](FrameHolder fref) {
     aggregator_->invoke(std::move(fref));
   };
@@ -234,7 +234,7 @@ bool PipelinePrivate::unsafeStart(std::shared_ptr<PipelineConfigPrivate> conf) {
   multi_stream->open();
   auto synced_streams_ids = onStart(profile);
 
-  FrameCallbackPtr callbacks = getCallback(synced_streams_ids);
+  FrameCallbackPtr callbacks = getCallback();
   multi_stream->start(callbacks);
 
   context_->start();
@@ -291,18 +291,16 @@ PipelineProfile Pipeline::start(const PipelineConfig &config) {
   return PipelineProfile(profile);
 }
 
-template<class T>
-PipelineProfile Pipeline::start(T callback) {
+PipelineProfile Pipeline::start(FrameCallbackPtr callback) {
   auto config = std::make_shared<PipelineConfigPrivate>();
-  std::shared_ptr<SePipelineProfile> profile(new SePipelineProfile{pipeline_->pipeline->start(config, callback)});
+  std::shared_ptr<SePipelineProfile> profile(new SePipelineProfile{pipeline_->pipeline->start(config, std::move(callback))});
   return PipelineProfile(profile);
 }
 
-template<class T>
-PipelineProfile Pipeline::start(const PipelineConfig &config, T callback) {
+PipelineProfile Pipeline::start(const PipelineConfig &config, FrameCallbackPtr callback) {
   auto config_private = config.get()->config;
   std::shared_ptr<SePipelineProfile>
-      profile(new SePipelineProfile{pipeline_->pipeline->start(config_private, callback)});
+      profile(new SePipelineProfile{pipeline_->pipeline->start(config_private, std::move(callback))});
   return PipelineProfile(profile);
 }
 

@@ -20,6 +20,8 @@
 #include "core/core_types.hpp"
 #include "se_util.hpp"
 
+struct OutputObstacles;
+
 namespace libsmartereye2 {
 
 std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
@@ -41,7 +43,7 @@ class FrameData : public FrameInterface, public noncopyable {
 
   void setSensor(std::shared_ptr<SensorInterface> sensor) override;
 
-  const char* getFrameMetadata(const FrameMetadataValue &frame_metadata) const override;
+  const char *getFrameMetadata(const FrameMetadataValue &frame_metadata) const override;
 
   size_t getFrameMetadataSize() const override;
 
@@ -57,13 +59,15 @@ class FrameData : public FrameInterface, public noncopyable {
 
   int64_t getFrameIndex() const override;
 
-  std::shared_ptr<StreamProfileInterface> getStream() const override;
+  int64_t getSpeed() const override;
+
+  std::shared_ptr<StreamProfileInterface> getStreamProfile() const override;
 
   void setTimestamp(double new_ts) override;
 
   void setTimestampDomain(TimestampDomain timestamp_domain) override;
 
-  void setStream(std::shared_ptr<StreamProfileInterface> sp) override;
+  void setStreamProfile(std::shared_ptr<StreamProfileInterface> sp) override;
 
   void acquire() override;
 
@@ -97,7 +101,7 @@ class FrameData : public FrameInterface, public noncopyable {
   bool fixed_{};
   std::shared_ptr<ArchiveInterface> owner_; // pointer to the owner to be returned to by last observe
   std::weak_ptr<SensorInterface> sensor_;
-  std::shared_ptr<StreamProfileInterface> stream_ = nullptr;
+  std::shared_ptr<StreamProfileInterface> stream_profile_ = nullptr;
 };
 
 class CompositeFrameData : public FrameData {
@@ -200,7 +204,21 @@ class PoseData : public FrameData {
 
 class JourneyFrameData : public FrameData {
  public:
+};
 
+class ObstacleFrameData : public FrameData {
+ public:
+  void loadObstacles(const uint8_t *data, uint32_t data_size);
+  int num() const { return num_; }
+  const std::vector<std::shared_ptr<OutputObstacles>> &obstacles() const { return obstacles_; }
+
+ private:
+  int num_ = 0;
+  std::vector<std::shared_ptr<OutputObstacles>> obstacles_;
+};
+
+class LaneFrameData : public FrameData {
+ public:
 };
 
 }  // namespace libsmartereye2

@@ -86,8 +86,6 @@ class SensorBase : public virtual SensorInterface, public virtual OptionsContain
  protected:
   void setActiveStream(const StreamProfiles &requests);
 
-  std::vector<platform::BackendProfile> internal_configs_;
-
   std::atomic<bool> is_streaming_;
   std::atomic<bool> is_opened_;
   std::shared_ptr<MetadataParserMap> metadata_parsers_ = nullptr;

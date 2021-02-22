@@ -38,11 +38,12 @@ class FrameInterface {
   virtual double getFrameTimestamp() const = 0;
   virtual TimestampDomain getFrameTimestampDomain() const = 0;
   virtual int64_t getFrameIndex() const = 0;
-  virtual std::shared_ptr<StreamProfileInterface> getStream() const = 0;
+  virtual int64_t getSpeed() const = 0;
+  virtual std::shared_ptr<StreamProfileInterface> getStreamProfile() const = 0;
 
   virtual void setTimestamp(double new_ts) = 0;
   virtual void setTimestampDomain(TimestampDomain timestamp_domain) = 0;
-  virtual void setStream(std::shared_ptr<StreamProfileInterface> sp) = 0;
+  virtual void setStreamProfile(std::shared_ptr<StreamProfileInterface> sp) = 0;
 
   virtual void acquire() = 0;
   virtual void release() = 0;

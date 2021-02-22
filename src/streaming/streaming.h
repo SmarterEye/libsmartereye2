@@ -69,17 +69,6 @@ class StreamInterface : public std::enable_shared_from_this<StreamInterface> {
   virtual void setFrameId(FrameId frame_id) = 0;
 };
 
-class BackendStreamProfile {
- public:
-  explicit BackendStreamProfile(platform::BackendProfile backend_profile)
-      : backend_profile_(backend_profile) {}
-
-  platform::BackendProfile backendProfile() const { return backend_profile_; }
-
- private:
-  platform::BackendProfile backend_profile_;
-};
-
 }  // namespace libsmartereye2
 
 #endif  // LIBSMARTEREYE2_STREAMING_H

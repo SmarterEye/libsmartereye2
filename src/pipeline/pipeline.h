@@ -57,7 +57,7 @@ class PipelinePrivate : public std::enable_shared_from_this<PipelinePrivate> {
   std::shared_ptr<ContextPrivate> getContext() const { return context_; }
 
  protected:
-  FrameCallbackPtr getCallback(const std::vector<int>& synced_streams_ids);
+  FrameCallbackPtr getCallback() const;
   std::vector<int> onStart(const std::shared_ptr<PipelineProfilePrivate>& profile);
   bool unsafeStart(std::shared_ptr<PipelineConfigPrivate> conf);
   void unsafeStop();

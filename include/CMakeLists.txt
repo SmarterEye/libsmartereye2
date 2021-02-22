@@ -5,6 +5,9 @@ target_sources(${LSE2_TARGET}
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/se_types.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/se_util.hpp"
 
+        "${CMAKE_CURRENT_LIST_DIR}/smartereye2/alg/LdwDataInterface.h"
+        "${CMAKE_CURRENT_LIST_DIR}/smartereye2/alg/obstacleData.h"
+
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/core/core_types.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/core/frame.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/core/frame_set.hpp"

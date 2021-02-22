@@ -86,6 +86,11 @@ class ConsumerQueue {
     return false;
   }
 
+  void popFront() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (!queue_.empty()) queue_.pop_front();
+  }
+
   bool peek(T **item) {
     std::unique_lock<std::mutex> lock(mutex_);
     if (queue_.empty()) return false;

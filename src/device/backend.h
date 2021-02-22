@@ -58,25 +58,6 @@ bool listChanged(const std::vector<T> &list1,
   return false;
 }
 
-struct BackendProfile {
-  uint32_t width;
-  uint32_t height;
-  uint32_t fps;
-  uint32_t format;
-
-  using ProfileTuple = std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>;
-  explicit operator ProfileTuple() const {
-    return std::make_tuple(width, height, fps, format);
-  }
-
-  bool operator==(const BackendProfile &rhs) const {
-    return (this->width == rhs.width) &&
-        (this->height == rhs.height) &&
-        (this->fps == rhs.fps) &&
-        (this->format == rhs.format);
-  }
-};
-
 struct ControlRange {
   ControlRange() = default;
   ControlRange(int32_t in_min, int32_t in_max, int32_t in_step, int32_t in_def);

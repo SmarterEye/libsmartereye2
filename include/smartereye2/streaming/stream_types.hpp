@@ -1,5 +1,3 @@
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "cert-err58-cpp"
 // Copyright 2020 Smarter Eye Co.,Ltd. All Rights Reserved.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +14,9 @@
 
 #ifndef LIBSMARTEREYE2_STREAM_TYPES_HPP
 #define LIBSMARTEREYE2_STREAM_TYPES_HPP
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cert-err58-cpp"
 
 #include <map>
 
@@ -82,6 +83,6 @@ static int getBppByFormat(FrameFormat format) {
 
 }  // namespace se2
 
-#endif //LIBSMARTEREYE2_STREAM_TYPES_HPP
-
 #pragma clang diagnostic pop
+
+#endif //LIBSMARTEREYE2_STREAM_TYPES_HPP

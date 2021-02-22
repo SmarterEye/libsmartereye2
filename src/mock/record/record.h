@@ -28,7 +28,6 @@ namespace platform {
 class TimeService;
 class PlaybackDeviceWatcher;
 struct UsbDeviceInfo;
-struct BackendProfile;
 
 class Recording {
  public:
@@ -122,15 +121,6 @@ class Recording {
 //    saveList(list, usb_device_infos_, k.type, k.entity_id);
 //  }
 //
-//  void save_stream_profiles(std::vector<BackendProfile> list, lookup_key key) {
-//    saveList(list, backend_profiles_, key.type, key.entity_id);
-//  }
-//
-//  std::vector<BackendProfile> load_stream_profiles(int id, call_type type) {
-//    auto &&c = find_call(type, id);
-//    return loadList(backend_profiles_, c);
-//  }
-//
 //  void load_device_changed_data(BackendDeviceGroup &old, BackendDeviceGroup &curr, lookup_key k) {
 //    auto &&c = find_call(k.type, k.entity_id);
 //
@@ -158,7 +148,6 @@ class Recording {
 //  std::vector<call> calls;
   std::vector<std::vector<uint8_t>> blobs_;
   std::vector<UsbDeviceInfo> usb_device_infos_;
-  std::vector<BackendProfile> backend_profiles_;
   std::shared_ptr<PlaybackDeviceWatcher> watcher_;
 
   std::recursive_mutex mutex_;

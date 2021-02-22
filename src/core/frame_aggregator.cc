@@ -23,12 +23,15 @@
 
 namespace libsmartereye2 {
 
-FrameAggregator::FrameAggregator(std::vector<int> streams_to_aggregate)
-    : ProcessingBlock("Aggregator"),
-      queue_(new ConsumerQueue<FrameHolder>),
-      streams_to_aggregate_ids_(std::move(streams_to_aggregate)),
-      accepting_(true) {
+static const int kFrameNum2Aggregate(250);
 
+FrameAggregator::FrameAggregator(const std::vector<int>& streams_to_aggregate)
+    : ProcessingBlock("Aggregator"),
+      queue_(new ConsumerQueue<FrameHolder>(kFrameNum2Aggregate)),
+      accepting_(true) {
+  for (auto uid : streams_to_aggregate) {
+    streams_to_aggregate_ids_.insert(uid);
+  }
 }
 
 bool FrameAggregator::dequeue(FrameHolder *item, uint32_t timeout_ms) {
@@ -69,7 +72,7 @@ void FrameAggregator::handleFrame(const FrameHolder& frame, SyntheticSourceInter
     for (size_t i = 0; i < comp->getFrameCount(); i++) {
       FrameInterface *current_frame = comp->getFrame(i);
       current_frame->acquire();
-      int uid = current_frame->getStream()->uniqueId();
+      int uid = current_frame->getStreamProfile()->uniqueId();
       last_set_[uid] = FrameHolder(current_frame);
     }
 
@@ -90,7 +93,16 @@ void FrameAggregator::handleFrame(const FrameHolder& frame, SyntheticSourceInter
     queue_->enqueue(sync_fref.clone());
   } else {
 //    source->frameReady(frame.clone());
-    last_set_[frame->getStream()->uniqueId()] = frame.clone();
+
+    // filter invalid frame
+    if (!frame->getStreamProfile()) return;
+
+    auto uid = frame->getStreamProfile()->uniqueId();
+    if (streams_to_aggregate_ids_.find(uid) == streams_to_aggregate_ids_.end()) {
+      return;
+    }
+
+    last_set_[uid] = frame.clone();
     if (last_set_.size() == streams_to_aggregate_ids_.size()) {
       std::vector<FrameHolder> sync_set;
       for (auto &&s : last_set_) {
@@ -104,8 +116,8 @@ void FrameAggregator::handleFrame(const FrameHolder& frame, SyntheticSourceInter
       sync_fref->setTimestamp(frame->getFrameTimestamp());
       sync_fref->setTimestampDomain(frame->getFrameTimestampDomain());
       sync_fref->setSensor(frame->getSensor());
-      sync_fref->setStream(frame->getStream());
-      queue_->enqueue(sync_fref.clone());
+      sync_fref->setStreamProfile(frame->getStreamProfile());
+      (queue_->size() < kFrameNum2Aggregate) ? queue_->enqueue(sync_fref.clone()) : queue_->popFront();
 
       last_set_.clear();
     }

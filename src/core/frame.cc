@@ -19,6 +19,8 @@
 
 #include "core/frame.hpp"
 #include "core/frame_set.hpp"
+#include "alg/obstacleData.h"
+#include "alg/LdwDataInterface.h"
 
 namespace se2 {
 
@@ -37,7 +39,7 @@ Frame::Frame(SeFrame *ref) : frame_ref_(ref) {
     frame_index_ = ref->getFrameIndex();
     auto frame_data = dynamic_cast<libsmartereye2::CompositeFrameData *>(ref);
     if (!frame_data) {
-      profile_ = StreamProfile(new SeStreamProfile{ref->getStream().get()});
+      profile_ = StreamProfile(new SeStreamProfile{ref->getStreamProfile().get()});
     }
   }
 }
@@ -80,6 +82,10 @@ bool Frame::supportsFrameMetadata(FrameMetadataValue frame_metadata) const {
 
 int64_t Frame::getFrameIndex() const {
   return frame_ref_->getFrameIndex();
+}
+
+int64_t Frame::getSpeed() const {
+  return frame_ref_->getSpeed();
 }
 
 size_t Frame::dataSize() const {
@@ -186,6 +192,14 @@ void Points::exportToPly(const std::string &fnmae, VideoFrame texture) const {
 SeVector3f MotionFrame::getMotionData() const {
   auto float_data = reinterpret_cast<const float *>(data());
   return SeVector3f{float_data[0], float_data[1], float_data[2]};
+}
+
+int ObstacleFrame::num() const {
+  return dynamic_cast<libsmartereye2::ObstacleFrameData *>(get())->num();
+}
+
+std::vector<std::shared_ptr<OutputObstacles>> ObstacleFrame::obstacles() const {
+  return dynamic_cast<libsmartereye2::ObstacleFrameData *>(get())->obstacles();
 }
 
 }  // namespace se2

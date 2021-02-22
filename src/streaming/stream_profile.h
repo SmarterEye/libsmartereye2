@@ -43,10 +43,8 @@ class StreamProfileInterface : public StreamInterface {
   virtual std::shared_ptr<StreamProfileInterface> clone() const = 0;
 };
 
-class StreamProfileBase : public virtual StreamProfileInterface, public BackendStreamProfile {
+class StreamProfileBase : public virtual StreamProfileInterface {
  public:
-  explicit StreamProfileBase(platform::BackendProfile backend_profile);
-
   int32_t index() const override { return index_; }
   int32_t uniqueId() const override { return uid_; }
   FrameId frameId() const override { return frame_id_; }
@@ -84,8 +82,6 @@ class VideoStreamProfileInterface : public virtual StreamProfileInterface {
 
 class VideoStreamProfilePrivate : public StreamProfileBase, public virtual VideoStreamProfileInterface {
  public:
-  explicit VideoStreamProfilePrivate(platform::BackendProfile backend_profile);
-
   int32_t width() const override { return width_; }
   int32_t height() const override { return height_; }
 
@@ -113,8 +109,6 @@ class MotionStreamProfileInterface : public virtual StreamProfileInterface {
 
 class MotionStreamProfilePrivate : public StreamProfileBase, public virtual MotionStreamProfileInterface {
  public:
-  explicit MotionStreamProfilePrivate(platform::BackendProfile backend_profile);
-
   MotionDeviceIntrinsics getMotionIntrinsics() const override { return intrinsics_; }
   void setMotionIntrinsics(const MotionDeviceIntrinsics &intrinsics) override { intrinsics_ = intrinsics; }
 

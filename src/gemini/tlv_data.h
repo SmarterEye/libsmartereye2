@@ -45,7 +45,9 @@ enum SerialDataUnit {
   SerialDataUnit_FileData,
   SerialDataUnit_FileResp,
   SerialDataUnit_Speed,
-  SerialDataUnit_J2Perception
+  SerialDataUnit_J2Perception,
+  SerialDataUnit_Obstacle,
+  SerialDataUnit_Lane
 };
 
 struct SerialFileHeader {

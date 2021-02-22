@@ -73,7 +73,7 @@ IdentityMatcher::IdentityMatcher(StreamId stream_id, FrameId frame_id)
 
 void IdentityMatcher::dispatch(FrameHolder f, SyncronizationEnvironment env) {
   std::stringstream s;
-  s << name_ << "--> " << static_cast<int>(f->getStream()->frameId()) << " " << f->getFrameIndex() << ", " << std::fixed
+  s << name_ << "--> " << static_cast<int>(f->getStreamProfile()->frameId()) << " " << f->getFrameIndex() << ", " << std::fixed
     << f->getFrameTimestamp() << "\n";
   LOG(DEBUG) << s.str();
 
@@ -103,12 +103,12 @@ std::string CompositeMatcher::frameToString(FrameHolder &frame_holder) {
   if (composite) {
     for (int i = 0; i < composite->getFrameCount(); i++) {
       auto frame = composite->getFrame(i);
-      s << static_cast<int>(frame->getStream()->frameId()) << " " << frame->getFrameIndex() << " " << std::fixed
+      s << static_cast<int>(frame->getStreamProfile()->frameId()) << " " << frame->getFrameIndex() << " " << std::fixed
         << frame->getFrameTimestamp() << " ";
     }
   } else {
-    s << static_cast<int>(frame_holder->getStream()->frameId());
-    s << " " << frame_holder->getStream()->uniqueId();
+    s << static_cast<int>(frame_holder->getStreamProfile()->frameId());
+    s << " " << frame_holder->getStreamProfile()->uniqueId();
     s << " " << frame_holder->getFrameIndex();
     s << " " << std::fixed << (double) frame_holder->getFrameTimestamp();
     s << " ";
@@ -149,8 +149,8 @@ std::string CompositeMatcher::framesToString(std::vector<Matcher *> matchers) {
 
 std::shared_ptr<Matcher> CompositeMatcher::findMatcher(const FrameHolder &frame_holder) {
   std::shared_ptr<Matcher> matcher;
-  auto stream_id = frame_holder.frame->getStream()->uniqueId();
-  auto stream_type = frame_holder.frame->getStream()->frameId();
+  auto stream_id = frame_holder.frame->getStreamProfile()->uniqueId();
+  auto stream_type = frame_holder.frame->getStreamProfile()->frameId();
 
   // TODO: Potential deadlock if getSensor() gets a hold of the last reference of that sensor
   auto sensor = frame_holder.frame->getSensor().get();
@@ -228,8 +228,8 @@ TimestampCompositeMatcher::TimestampCompositeMatcher(std::vector<std::shared_ptr
 }
 
 bool TimestampCompositeMatcher::equal(const FrameHolder &a, const FrameHolder &b) {
-  auto a_fps = a.frame->getStream()->fps();
-  auto b_fps = b.frame->getStream()->fps();
+  auto a_fps = a.frame->getStreamProfile()->fps();
+  auto b_fps = b.frame->getStreamProfile()->fps();
   int min_fps = (a_fps < b_fps ? a_fps : b_fps);
 
   auto timestamp_pair = extractTimestamps(a, b);
@@ -300,7 +300,7 @@ void TimestampCompositeMatcher::cleanInactiveStreams(const FrameHolder &frame_ho
 }
 
 void TimestampCompositeMatcher::updateLastArrived(FrameHolder &frame_holder, Matcher *matcher) {
-  fps_[matcher] = frame_holder->getStream()->fps();
+  fps_[matcher] = frame_holder->getStreamProfile()->fps();
   last_arrived_[matcher] = Environment::instance().getTimeService()->getTime();
 }
 
@@ -312,7 +312,7 @@ void TimestampCompositeMatcher::updateNextExpected(const FrameHolder &frame_hold
 uint32_t TimestampCompositeMatcher::fps(const FrameHolder &frame_holder) {
   uint32_t fps = 0;
   LOG(DEBUG) << "fps " << fps << " " << frameToString(const_cast<FrameHolder &>(frame_holder));
-  return fps ? fps : frame_holder.frame->getStream()->fps();
+  return fps ? fps : frame_holder.frame->getStreamProfile()->fps();
 }
 
 std::pair<double, double> TimestampCompositeMatcher::extractTimestamps(const FrameHolder &a, const FrameHolder &b) {
@@ -335,7 +335,7 @@ SyncerProcessUnit::SyncerProcessUnit(std::initializer_list<bool> enable_opts)
     auto composite = dynamic_cast<CompositeFrameData *>(f.frame);
     for (int i = 0; i < composite->getFrameCount(); i++) {
       auto matched = composite->getFrame(i);
-      ss << static_cast<int>(matched->getStream()->frameId()) << " " << matched->getFrameIndex() << ", " << std::fixed
+      ss << static_cast<int>(matched->getStreamProfile()->frameId()) << " " << matched->getFrameIndex() << ", " << std::fixed
          << matched->getFrameTimestamp() << " ";
     }
 

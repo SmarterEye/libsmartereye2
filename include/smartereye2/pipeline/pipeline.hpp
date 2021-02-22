@@ -31,11 +31,8 @@ class SMARTEREYE2_API Pipeline {
   PipelineProfile start();
   PipelineProfile start(const PipelineConfig &config);
 
-  template<class T>
-  PipelineProfile start(T callback);
-
-  template<class T>
-  PipelineProfile start(const PipelineConfig &config, T callback);
+  PipelineProfile start(FrameCallbackPtr callback);
+  PipelineProfile start(const PipelineConfig &config, FrameCallbackPtr callback);
 
   void stop(bool force = false);
   bool isConnected() const;

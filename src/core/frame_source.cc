@@ -30,6 +30,7 @@ FrameSource::FrameSource(uint32_t max_publish_list_size)
 void FrameSource::init(std::shared_ptr<MetadataParserMap> metadata_parsers) {
   std::lock_guard<std::mutex> lock(callback_mutex_);
 
+  // TODO: should move to MetadataParserMap
   std::vector<SeExtension> supported{
       SeExtension::EXTENSION_VIDEO_FRAME,
       SeExtension::EXTENSION_COMPOSITE_FRAME,
@@ -38,7 +39,9 @@ void FrameSource::init(std::shared_ptr<MetadataParserMap> metadata_parsers) {
       SeExtension::EXTENSION_DISPARITY_FRAME,
       SeExtension::EXTENSION_MOTION_FRAME,
       SeExtension::EXTENSION_POSE_FRAME,
-      SeExtension::EXTENSION_JOURNEY_FRAME
+      SeExtension::EXTENSION_JOURNEY_FRAME,
+      SeExtension::EXTENSION_OBSTACLE_FRAME,
+      SeExtension::EXTENSION_LANE_FRAME
   };
 
   for (auto type : supported) {

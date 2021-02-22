@@ -23,7 +23,10 @@ static const int BUFFER_SIZE = 1024;  // Max size for control transfers
 
 namespace libsmartereye2 {
 
-static const FrameId kFrameIds4Capture = FrameId::LeftCamera | FrameId::RightCamera | FrameId::Disparity;
+static const FrameId kNecessaryFrameIds = (FrameId::LeftCamera | FrameId::RightCamera
+    | FrameId::CalibLeftCamera | FrameId::CalibRightCamera
+    | FrameId::Disparity
+);
 
 GeminiSensor::GeminiSensor(GeminiDevice *owner)
     : SensorBase("Gemini Sensor", owner) {
@@ -38,7 +41,7 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
   uint8_t buf[BUFFER_SIZE] = {0};
 
   auto *response = reinterpret_cast<platform::UsbCommonPackHead *>(buf);
-  auto gemini_device = dynamic_cast<GeminiDevice*>(device_owner_);
+  auto gemini_device = dynamic_cast<GeminiDevice *>(device_owner_);
 
   // wait for TaskRunner
   int16_t open_cam_stat = -1;
@@ -81,19 +84,18 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
               << ", frame format:" << frame_info.frame_format
               << ", frame size:" << frame_info.data_size;
 
-    platform::BackendProfile backend_profile{frame_info.width, frame_info.height, 25, frame_info.frame_format};
-    auto profile = std::make_shared<VideoStreamProfilePrivate>(backend_profile);
+    auto profile = std::make_shared<VideoStreamProfilePrivate>();
     profile->setDims(frame_info.width, frame_info.height);
     profile->setFrameId(static_cast<FrameId>(frame_info.frame_id));
     profile->setFormat(static_cast<FrameFormat>(frame_info.frame_format));
     profile->setIndex(frame_info.frame_index);
-    profile->setFrameRate(backend_profile.fps);
+    profile->setFrameRate(25);
     profile->setUniqueId(Environment::instance().generateStreamId());
     profile->setIntrinsics(getIntrinsics());
     int tags = ProfileTag::PROFILE_TAG_DEFAULT | ProfileTag::PROFILE_TAG_SUPERSET;
-    if (static_cast<FrameId>(frame_info.frame_id) & kFrameIds4Capture) {
-      tags |= ProfileTag::PROFILE_TAG_CAPTURE;
-    }
+//    if (static_cast<FrameId>(frame_info.frame_id) & kNecessaryFrameIds) {
+//      tags |= ProfileTag::PROFILE_TAG_CAPTURE;
+//    }
     profile->tagProfile(tags);
     results.push_back(profile);
 
@@ -119,18 +121,19 @@ void GeminiSensor::open(const StreamProfiles &requests) {
   frame_source_->init(metadata_parsers_);
   frame_source_->set_sensor(shared_from_this());
 
-  // filter frameid for capture
-  StreamProfiles profiles4capture = {};
+  // filter frameid
+  StreamProfiles necessary_profiles = {};
   std::copy_if(requests.begin(),
                requests.end(),
-               std::back_inserter(profiles4capture),
+               std::back_inserter(necessary_profiles),
                [](const std::shared_ptr<StreamProfileInterface> &profile) {
-                 return (profile->frameId() & kFrameIds4Capture) || (profile->tag() & ProfileTag::PROFILE_TAG_CAPTURE);
-               });
+                 return (profile->frameId() & kNecessaryFrameIds);
+               }
+  );
 
-  // set frame ids to device for capture
+  // set frame ids to device
   FrameId request_frame_ids = FrameId::NotUsed;
-  for (auto &&r : profiles4capture) {
+  for (auto &&r : necessary_profiles) {
     if (r->frameId() == FrameId::NotUsed) {
       LOG(ERROR) << "Requested wrong frame id!";
       continue;
@@ -140,7 +143,7 @@ void GeminiSensor::open(const StreamProfiles &requests) {
 
   uint8_t buf[BUFFER_SIZE] = {0};
   auto *response = reinterpret_cast<platform::UsbCommonPackHead *>(buf);
-  auto gemini_device = dynamic_cast<GeminiDevice*>(device_owner_);
+  auto gemini_device = dynamic_cast<GeminiDevice *>(device_owner_);
   int ret = gemini_device->control_transfer_in(platform::UsbCommand::SET_FRAME_IDS,
                                                static_cast<int>(request_frame_ids), response, BUFFER_SIZE);
   if (ret < 0) {
@@ -166,7 +169,7 @@ void GeminiSensor::open(const StreamProfiles &requests) {
   }
 
   is_opened_ = true;
-  setActiveStream(profiles4capture);
+  setActiveStream(necessary_profiles);
 }
 
 void GeminiSensor::close() {
@@ -250,7 +253,7 @@ bool GeminiSensor::startStream() {
   std::fill(buffer_.begin(), buffer_.end(), 0);
 
   stream_thread_ = std::thread([this] {
-    auto gemini_device = dynamic_cast<GeminiDevice*>(device_owner_);
+    auto gemini_device = dynamic_cast<GeminiDevice *>(device_owner_);
     int ret = 0;
     int missing_cnt = 0;
     const int kMissingFrameThreshold = 25; // 25 frames for 1 sec
@@ -332,7 +335,7 @@ void GeminiSensor::handle_received_frames() {
       video->assign(info->width, info->height, 0, getBppByFormat(frame_format));
       video->setTimestamp(timestamp);
       video->setTimestampDomain(TimestampDomain::SYSTEM_TIME);
-      video->setStream(profile);
+      video->setStreamProfile(profile);
       video->setSensor(shared_from_this());
       if (with_embededline) {
         auto raw_frame_with_embededline = reinterpret_cast<RawUsbImageFrame4Embededline *>(data_ptr);
@@ -341,7 +344,7 @@ void GeminiSensor::handle_received_frames() {
         // record j2 timestamp
         if (frame_id == FrameId::LeftCamera) {
           // get j2counter from embededline first 4 bytes
-          uint32_t j2counter = *reinterpret_cast<uint32_t*>(raw_frame_with_embededline->embededline);
+          uint32_t j2counter = *reinterpret_cast<uint32_t *>(raw_frame_with_embededline->embededline);
           j2counter_queue_.push(j2counter);
           j2counter_to_timestamp_[j2counter] = timestamp;
 

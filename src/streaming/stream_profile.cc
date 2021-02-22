@@ -17,25 +17,15 @@
 
 namespace libsmartereye2 {
 
-StreamProfileBase::StreamProfileBase(platform::BackendProfile backend_profile)
-    : BackendStreamProfile(backend_profile) {
-
-}
 std::shared_ptr<StreamProfileInterface> StreamProfileBase::clone() const {
-  auto res = std::make_shared<StreamProfileBase>(backendProfile());
+  auto res = std::make_shared<StreamProfileBase>();
   res->setUniqueId(uniqueId() + 1);
   res->setFrameRate(fps());
   return res;
 }
 
-VideoStreamProfilePrivate::VideoStreamProfilePrivate(platform::BackendProfile backend_profile)
-    : StreamProfileBase(backend_profile),
-      width_(0), height_(0) {
-
-}
-
 std::shared_ptr<StreamProfileInterface> VideoStreamProfilePrivate::clone() const {
-  auto res = std::make_shared<VideoStreamProfilePrivate>(platform::BackendProfile{});
+  auto res = std::make_shared<VideoStreamProfilePrivate>();
   res->setUniqueId(uniqueId() + 1);
   res->setDims(width(), height());
   res->setIntrinsics(getIntrinsics());
@@ -43,13 +33,8 @@ std::shared_ptr<StreamProfileInterface> VideoStreamProfilePrivate::clone() const
   return res;
 }
 
-MotionStreamProfilePrivate::MotionStreamProfilePrivate(platform::BackendProfile backend_profile)
-    : StreamProfileBase(backend_profile) {
-
-}
-
 std::shared_ptr<StreamProfileInterface> MotionStreamProfilePrivate::clone() const {
-  auto res = std::make_shared<MotionStreamProfilePrivate>(platform::BackendProfile{});
+  auto res = std::make_shared<MotionStreamProfilePrivate>();
   res->setUniqueId(uniqueId() + 1);
   res->setMotionIntrinsics(getMotionIntrinsics());
   res->setFrameRate(fps());

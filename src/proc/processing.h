@@ -62,7 +62,7 @@ class ProcessingBlock : public ProcessingBlockInterface, public OptionsContainer
  protected:
   FrameSource frame_source_;
   std::mutex mutex_;
-  FrameProcessorCallbackPtr callback_;
+  FrameProcessorCallbackPtr processing_callback_;
   SyntheticSource source_wrapper_;
 };
 

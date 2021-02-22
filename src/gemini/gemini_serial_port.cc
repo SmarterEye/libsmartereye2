@@ -1,6 +1,16 @@
-//
-// Created by xtp on 2021/1/20.
-//
+// Copyright 2020 Smarter Eye Co.,Ltd. All Rights Reserved.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "gemini_serial_port.h"
 
@@ -11,17 +21,49 @@
 #include "tlv_data.h"
 #include "easylogging++.h"
 
+#include "alg/LdwDataInterface.h"
+#include "alg/obstacleData.h"
+
+#include "streaming/stream_profile.h"
+#include "se_types.hpp"
+
 namespace libsmartereye2 {
 
 GeminiSerialPort::GeminiSerialPort(GeminiSensor *owner)
     : sensor_owner_(owner),
       watchdog_(nullptr),
       is_connecting_(false),
+      write_dispatcher_(std::make_shared<Dispatcher>(1)),
       serial_running_(false),
-      write_dispatcher_(std::make_shared<Dispatcher>(1)) {
+      speed_(0) {
+  init();
+}
+
+void GeminiSerialPort::init() {
   watchdog_ = std::make_shared<Watchdog>([this]() {
+    LOG(DEBUG) << "onDisconnected by Watchdog";
     onDisconnected();
-  }, 5000);
+    offerHand();  // reconnect
+  }, 8000);
+
+  auto obstacle_profile = std::make_shared<VideoStreamProfilePrivate>();
+  obstacle_profile->setDims(1280, 720);
+  obstacle_profile->setFrameId(FrameId::Obstacle);
+  obstacle_profile->setFormat(FrameFormat::Custom);
+  obstacle_profile->setFrameRate(25);
+  obstacle_profile->setUniqueId(Environment::instance().generateStreamId());
+  obstacle_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
+  auto lane_profile = std::make_shared<VideoStreamProfilePrivate>();
+  lane_profile->setDims(1280, 720);
+  lane_profile->setFrameId(FrameId::Lane);
+  lane_profile->setFormat(FrameFormat::Custom);
+  lane_profile->setFrameRate(25);
+  lane_profile->setUniqueId(Environment::instance().generateStreamId());
+  lane_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
+  profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME] = obstacle_profile;
+  profiles_[SeExtension::EXTENSION_LANE_FRAME] = lane_profile;
 }
 
 void GeminiSerialPort::open() {
@@ -60,7 +102,6 @@ void GeminiSerialPort::open() {
 
 void GeminiSerialPort::close() {
   disconnect();
-  onDisconnected();
 
   serial_running_ = false;
   if (recv_thread_.joinable()) {
@@ -103,7 +144,7 @@ void GeminiSerialPort::handleTlvData(uint32_t type, const uint8_t *data, uint32_
   }
 }
 
-void GeminiSerialPort::connect() {
+void GeminiSerialPort::offerHand() {
   // handshake 1: send sync to server
   TLVStruct conn_cmd;
   conn_cmd.type = SerialConnection_Sync;
@@ -111,6 +152,10 @@ void GeminiSerialPort::connect() {
   conn_data.append((char *) &kSerialConnectionToken, 4);
   conn_data.append((char *) &conn_cmd, sizeof(TLVStruct));
   serial_->write(conn_data);
+}
+
+void GeminiSerialPort::connect() {
+  offerHand();
 
   serial_running_ = true;
   recv_thread_ = std::thread([this]() {
@@ -165,7 +210,7 @@ void GeminiSerialPort::disconnect() {
 void GeminiSerialPort::onConnected() {
   // handshake 2: recv sync from server
   is_connecting_ = true;
-  LOG(INFO) << "onConnected!!!";
+  LOG(INFO) << "serial port connected";
 
   // handshake 3: send ack to server
   send(SerialConnection_Heartbeat);
@@ -175,16 +220,15 @@ void GeminiSerialPort::onConnected() {
 }
 
 void GeminiSerialPort::onHeartbeat() {
-  LOG(INFO) << "<<< tick";
+//  LOG(INFO) << "<<< tick";
   send(SerialConnection_Heartbeat);
-  LOG(INFO) << "tock >>>";
+//  LOG(INFO) << "tock >>>";
   watchdog_->kick();
 }
 
 void GeminiSerialPort::onDisconnected() {
   is_connecting_ = false;
-  LOG(INFO) << "onDisconnected";
-  watchdog_->stop();
+  LOG(INFO) << "serial port disconnected";
 }
 
 void GeminiSerialPort::handleConnection(uint32_t type, const uint8_t *data, uint32_t data_size) {
@@ -216,19 +260,55 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
     case SerialDataUnit_Speed: {
       double speed = *(double *) data;
       speed_ = static_cast<int64_t>(speed);
-      LOG(INFO) << "speed: " << speed_ << "... ";
+//      LOG(INFO) << "speed: " << speed_ << "... ";
     }
       break;
     case SerialDataUnit_J2Perception: {
-      LOG(INFO) << "SerialDataUnit_J2Perception: " << data_size;
+//      LOG(INFO) << "SerialDataUnit_J2Perception: " << data_size;
+      FrameExtension frame_ext;
+      frame_ext.speed = speed_;
+      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_JOURNEY_FRAME,
+                                                                         data_size, frame_ext, true));
+      if (frame_holder.frame) {
+        auto journey = reinterpret_cast<JourneyFrameData *>(frame_holder.frame);
+        journey->setTimestamp(0); // TODO
+        journey->setTimestampDomain(TimestampDomain::SYSTEM_TIME);
+        journey->setStreamProfile(nullptr);  // TODO
+        journey->setSensor(sensor_owner_->shared_from_this());
+        journey->data().resize(data_size, 0);
+        journey->data().assign(data, data + data_size);
+        sensor_owner_->dispatch_threaded(std::move(frame_holder));
+      }
+    }
+      break;
+    case SerialDataUnit_Obstacle: {
+      FrameExtension frame_ext;
+      frame_ext.speed = speed_;
+      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_OBSTACLE_FRAME,
+                                                                         data_size, frame_ext, true));
+      if (frame_holder.frame) {
+        auto obstacle_frame = reinterpret_cast<ObstacleFrameData *>(frame_holder.frame);
+        obstacle_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME]);
+        obstacle_frame->setSensor(sensor_owner_->shared_from_this());
+        obstacle_frame->data().resize(data_size, 0);
+        obstacle_frame->data().assign(data, data + data_size);
+        obstacle_frame->loadObstacles(data, data_size);
+        sensor_owner_->dispatch_threaded(std::move(frame_holder));
+      }
+    }
+      break;
+    case SerialDataUnit_Lane: {
+//      auto *ldw_data_pack = (LdwDataPack*)(data);
 //      FrameExtension frame_ext;
 //      frame_ext.speed = speed_;
-//      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_JOURNEY_FRAME,
+//      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
 //                                                                         data_size, frame_ext, true));
 //      if (frame_holder.frame) {
-//        auto journey = reinterpret_cast<JourneyFrameData *>(frame_holder.frame);
-//        journey->data().resize(data_size, 0);
-//        journey->data().assign(data, data + data_size);
+//        auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
+//        lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
+//        lane_frame->setSensor(sensor_owner_->shared_from_this());
+//        lane_frame->data().resize(data_size, 0);
+//        lane_frame->data().assign(data, data + data_size);
 //        sensor_owner_->dispatch_threaded(std::move(frame_holder));
 //      }
     }

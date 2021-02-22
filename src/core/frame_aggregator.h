@@ -16,6 +16,7 @@
 #define LIBSMARTEREYE2_FRAME_AGGREGATOR_H
 
 #include <map>
+#include <set>
 #include <atomic>
 
 #include "proc/processing.h"
@@ -27,7 +28,7 @@ using StreamId = int;
 
 class FrameAggregator : public ProcessingBlock {
  public:
-  explicit FrameAggregator(std::vector<int> streams_to_aggregate);
+  explicit FrameAggregator(const std::vector<int>& streams_to_aggregate);
 
   bool dequeue(FrameHolder *item, uint32_t timeout_ms);
   bool tryDequeue(FrameHolder *item);
@@ -40,7 +41,7 @@ class FrameAggregator : public ProcessingBlock {
   std::mutex mutex_;
   std::map<StreamId, FrameHolder> last_set_;
   std::unique_ptr<ConsumerQueue<FrameHolder>> queue_;
-  std::vector<int> streams_to_aggregate_ids_;
+  std::set<int> streams_to_aggregate_ids_;
   std::atomic<bool> accepting_;
 };
 
