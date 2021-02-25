@@ -63,8 +63,26 @@ void GeminiSerialPort::init() {
   lane_profile->setUniqueId(Environment::instance().generateStreamId());
   lane_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
+  auto small_obstacle_profile = std::make_shared<VideoStreamProfilePrivate>();
+  small_obstacle_profile->setDims(1280, 720);
+  small_obstacle_profile->setFrameId(FrameId::SmallObstacle);
+  small_obstacle_profile->setFormat(FrameFormat::Custom);
+  small_obstacle_profile->setFrameRate(25);
+  small_obstacle_profile->setUniqueId(Environment::instance().generateStreamId());
+  small_obstacle_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
+  auto j2_profile = std::make_shared<VideoStreamProfilePrivate>();
+  j2_profile->setDims(1280, 720);
+  j2_profile->setFrameId(FrameId::J2Perception);
+  j2_profile->setFormat(FrameFormat::Custom);
+  j2_profile->setFrameRate(25);
+  j2_profile->setUniqueId(Environment::instance().generateStreamId());
+  j2_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
   profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME] = obstacle_profile;
   profiles_[SeExtension::EXTENSION_LANE_FRAME] = lane_profile;
+  profiles_[SeExtension::EXTENSION_SMALL_OBS_FRAME] = small_obstacle_profile;
+  profiles_[SeExtension::EXTENSION_JOURNEY_FRAME] = j2_profile;
 }
 
 void GeminiSerialPort::open() {
@@ -259,7 +277,7 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
     }
       break;
     case SerialDataUnit_Speed: {
-      double speed = *(double *) data;
+      int speed = *(int *) data;
       speed_ = static_cast<int64_t>(speed);
 //      LOG(INFO) << "speed: " << speed_ << "... ";
     }
@@ -274,7 +292,7 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
         auto journey = reinterpret_cast<JourneyFrameData *>(frame_holder.frame);
         journey->setTimestamp(0); // TODO
         journey->setTimestampDomain(TimestampDomain::SYSTEM_TIME);
-        journey->setStreamProfile(nullptr);  // TODO
+        journey->setStreamProfile(profiles_[SeExtension::EXTENSION_JOURNEY_FRAME]);
         journey->setSensor(sensor_owner_->shared_from_this());
         journey->data().resize(data_size, 0);
         journey->data().assign(data, data + data_size);
@@ -317,9 +335,19 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
     case SerialDataUnit_AlgorithResult: {
       auto alg_res = (AlgorithmResult*)data;
       if (alg_res->dataType == AlgorithmResult::SmallObsLabel) {
-        LOG(INFO) << "AlgorithmResult: " << alg_res->dataSize;
-        auto small_obs_label = (SmallObsLabel*)alg_res->data;
-        // TODO: convert to SmallObsLabelFrame
+//        LOG(INFO) << "AlgorithmResult: " << alg_res->dataSize;
+        FrameExtension frame_ext;
+        frame_ext.speed = speed_;
+        FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_SMALL_OBS_FRAME,
+                                                                           data_size, frame_ext, true));
+        if (frame_holder.frame) {
+          auto small_obs_frame = reinterpret_cast<SmallObstacleFrameData *>(frame_holder.frame);
+          small_obs_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_SMALL_OBS_FRAME]);
+          small_obs_frame->setSensor(sensor_owner_->shared_from_this());
+          small_obs_frame->data().resize(alg_res->dataSize, 0);
+          small_obs_frame->data().assign(alg_res->data, alg_res->data + alg_res->dataSize);
+          sensor_owner_->dispatch_threaded(std::move(frame_holder));
+        }
       }
     }
       break;

@@ -38,7 +38,8 @@ enum class FrameId : int {
   Compound = 1 << 11,
   LDownSample = 1 << 12,
   RDownSample = 1 << 13,
-  LaneExt = 1 << 14
+  J2Perception = 1 << 14,
+  SmallObstacle = 1 << 15,
 };
 
 constexpr FrameId operator|(const FrameId self_value, const FrameId in_value) {

@@ -41,7 +41,8 @@ void FrameSource::init(std::shared_ptr<MetadataParserMap> metadata_parsers) {
       SeExtension::EXTENSION_POSE_FRAME,
       SeExtension::EXTENSION_JOURNEY_FRAME,
       SeExtension::EXTENSION_OBSTACLE_FRAME,
-      SeExtension::EXTENSION_LANE_FRAME
+      SeExtension::EXTENSION_LANE_FRAME,
+      SeExtension::EXTENSION_SMALL_OBS_FRAME
   };
 
   for (auto type : supported) {

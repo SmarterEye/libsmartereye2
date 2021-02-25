@@ -221,6 +221,10 @@ class LaneFrameData : public FrameData {
  public:
 };
 
+class SmallObstacleFrameData : public FrameData {
+ public:
+};
+
 }  // namespace libsmartereye2
 
 #endif //LIBSMARTEREYE2_FRAME_DATA_H

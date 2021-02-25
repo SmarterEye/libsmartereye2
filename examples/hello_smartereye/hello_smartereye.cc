@@ -18,6 +18,7 @@
 
 // algorithm output
 #include <smartereye2/alg/obstacleData.h>
+#include <smartereye2/alg/algorithmresult.h>
 
 //#define GET_SYNCED_FRAME
 
@@ -49,13 +50,22 @@ void handleCurrentFrame(const se2::Frame &current_frame) {
       cv::imshow("disparity", disparity_mat);
     }
       break;
+    case FrameId::J2Perception: {
+      std::cout << "J2Perception: " << current_frame.dataSize() << std::endl;
+    }
+      break;
     case FrameId::Obstacle: {
       auto obstacle_frame = se2::ObstacleFrame(current_frame);
-//      std::cout << "obs num: " << obstacle_frame.num() << " : " << std::endl;
+      std::cout << "obs num: " << obstacle_frame.num() << std::endl;
 //      for (int i = 0; i < obstacle_frame.num(); i++) {
 //        auto obs = obstacle_frame.obstacles()[i];
 //        std::cout << (int)obs->trackId << " -- " << obs->avgDistanceZ << std::endl;
 //      }
+    }
+      break;
+    case FrameId::SmallObstacle: {
+      auto small_obs_frame = se2::Frame(current_frame);
+      std::cout << "SmallObstacle: " << small_obs_frame.dataSize() << std::endl;
     }
       break;
     default:break;
