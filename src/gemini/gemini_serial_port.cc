@@ -23,6 +23,7 @@
 
 #include "alg/LdwDataInterface.h"
 #include "alg/obstacleData.h"
+#include "alg/algorithmresult.h"
 
 #include "streaming/stream_profile.h"
 #include "se_types.hpp"
@@ -311,6 +312,15 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
 //        lane_frame->data().assign(data, data + data_size);
 //        sensor_owner_->dispatch_threaded(std::move(frame_holder));
 //      }
+    }
+      break;
+    case SerialDataUnit_AlgorithResult: {
+      auto alg_res = (AlgorithmResult*)data;
+      if (alg_res->dataType == AlgorithmResult::SmallObsLabel) {
+        LOG(INFO) << "AlgorithmResult: " << alg_res->dataSize;
+        auto small_obs_label = (SmallObsLabel*)alg_res->data;
+        // TODO: convert to SmallObsLabelFrame
+      }
     }
       break;
     default:break;
