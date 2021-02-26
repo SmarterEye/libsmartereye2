@@ -13,7 +13,8 @@ struct AlgorithmResult
 
     enum ResultType {
         Flatness = 1,
-        SmallObsLabel
+        SmallObsLabel,
+        JourneyLaneData
     };
 };
 

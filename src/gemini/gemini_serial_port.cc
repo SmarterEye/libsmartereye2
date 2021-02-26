@@ -335,7 +335,7 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
     case SerialDataUnit_AlgorithResult: {
       auto alg_res = (AlgorithmResult*)data;
       if (alg_res->dataType == AlgorithmResult::SmallObsLabel) {
-//        LOG(INFO) << "AlgorithmResult: " << alg_res->dataSize;
+        LOG(INFO) << "AlgorithmResult: " << alg_res->dataSize;
         FrameExtension frame_ext;
         frame_ext.speed = speed_;
         FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_SMALL_OBS_FRAME,
@@ -348,6 +348,19 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
           small_obs_frame->data().assign(alg_res->data, alg_res->data + alg_res->dataSize);
           sensor_owner_->dispatch_threaded(std::move(frame_holder));
         }
+      } else if (alg_res->dataType == AlgorithmResult::JourneyLaneData) {
+          FrameExtension frame_ext;
+          frame_ext.speed = speed_;
+          FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
+                                                                             data_size, frame_ext, true));
+          if (frame_holder.frame) {
+            auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
+            lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
+            lane_frame->setSensor(sensor_owner_->shared_from_this());
+            lane_frame->data().resize(alg_res->dataSize, 0);
+            lane_frame->data().assign(alg_res->data, alg_res->data + alg_res->dataSize);
+            sensor_owner_->dispatch_threaded(std::move(frame_holder));
+          }
       }
     }
       break;
