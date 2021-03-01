@@ -16,6 +16,9 @@
 namespace libsmartereye2 {
 
 static const uint32_t kSerialConnectionToken(0xAA5555AA);
+static const uint32_t kMinValidTypeValue(50000);
+static const uint32_t kMaxValidTypeValue(60000);
+static const uint32_t kMaxTlvDataLength(4096 * 1024);
 
 struct TLVStruct {
   uint32_t type;
@@ -26,7 +29,7 @@ struct TLVStruct {
 };
 
 enum SerialConnection {
-  SerialConnection_None = 50000,
+  SerialConnection_None = kMinValidTypeValue,
   SerialConnection_Sync,
   SerialConnection_Heartbeat,
   SerialConnection_Disconnect
@@ -48,7 +51,8 @@ enum SerialDataUnit {
   SerialDataUnit_J2Perception,
   SerialDataUnit_Obstacle,
   SerialDataUnit_Lane,
-  SerialDataUnit_AlgorithResult
+  SerialDataUnit_AlgorithResult,
+  SerialDataUnit_FreeSpace
 };
 
 struct SerialFileHeader {

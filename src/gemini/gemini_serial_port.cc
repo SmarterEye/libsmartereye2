@@ -43,6 +43,7 @@ GeminiSerialPort::GeminiSerialPort(GeminiSensor *owner)
 void GeminiSerialPort::init() {
   watchdog_ = std::make_shared<Watchdog>([this]() {
     LOG(DEBUG) << "onDisconnected by Watchdog";
+    serial_->flush();
     onDisconnected();
     offerHand();  // reconnect
   }, 8000);
@@ -63,6 +64,14 @@ void GeminiSerialPort::init() {
   lane_profile->setUniqueId(Environment::instance().generateStreamId());
   lane_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
+  auto free_space_profile = std::make_shared<VideoStreamProfilePrivate>();
+  free_space_profile->setDims(1280, 720);
+  free_space_profile->setFrameId(FrameId::FreeSpace);
+  free_space_profile->setFormat(FrameFormat::Custom);
+  free_space_profile->setFrameRate(25);
+  free_space_profile->setUniqueId(Environment::instance().generateStreamId());
+  free_space_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
   auto small_obstacle_profile = std::make_shared<VideoStreamProfilePrivate>();
   small_obstacle_profile->setDims(1280, 720);
   small_obstacle_profile->setFrameId(FrameId::SmallObstacle);
@@ -81,6 +90,7 @@ void GeminiSerialPort::init() {
 
   profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME] = obstacle_profile;
   profiles_[SeExtension::EXTENSION_LANE_FRAME] = lane_profile;
+  profiles_[SeExtension::EXTENSION_FREESPACE_FRAME] = free_space_profile;
   profiles_[SeExtension::EXTENSION_SMALL_OBS_FRAME] = small_obstacle_profile;
   profiles_[SeExtension::EXTENSION_JOURNEY_FRAME] = j2_profile;
 }
@@ -114,6 +124,7 @@ void GeminiSerialPort::open() {
     std::cout << ": " << port_entry.port << ", " << port_entry.description << ", " << port_entry.hardware_id
               << std::endl;
   }
+  serial_->flush();
 
   write_dispatcher_->start();
   connect();
@@ -122,6 +133,8 @@ void GeminiSerialPort::open() {
 void GeminiSerialPort::close() {
   disconnect();
 
+  watchdog_->stop();
+
   serial_running_ = false;
   if (recv_thread_.joinable()) {
     recv_thread_.join();
@@ -129,6 +142,9 @@ void GeminiSerialPort::close() {
 
   write_dispatcher_->flush();
   write_dispatcher_->stop();
+
+  serial_->close();
+  serial_.reset();
 }
 
 void GeminiSerialPort::requirePerception() {
@@ -149,7 +165,11 @@ void GeminiSerialPort::send(uint32_t command_type, const char *data, uint32_t da
     if (data_size > 0) {
       memcpy(cmd->data, data, data_size);
     }
-    serial_->write(buffer);
+    try {
+      serial_->write(buffer);
+    } catch (serial::IOException &e) {
+      LOG(DEBUG) << "serial write error: " << e.what();
+    }
   });
 }
 
@@ -185,39 +205,57 @@ void GeminiSerialPort::connect() {
     int pack_read = 0;
     int pack_lack = 0;
 
+    auto check_head_valid_func = [](const TLVStruct &tlv_head) -> bool {
+      bool invalid = (tlv_head.type < kMinValidTypeValue
+          || tlv_head.type > kMaxValidTypeValue
+          || tlv_head.length > kMaxTlvDataLength);
+      return !invalid;
+    };
+
     while (serial_running_) {
-      if (!is_head_found) {
-        nread = serial_->read((uint8_t *) &tlv_head, sizeof(TLVStruct));
-        if (nread == sizeof(TLVStruct)) {
-          is_head_found = true;
+      try {
+        if (!is_head_found) {
+          nread = serial_->read((uint8_t *) &tlv_head, sizeof(TLVStruct));
+          if (nread != sizeof(TLVStruct)) {
+            LOG(DEBUG) << "read TLV head timeout";
+            send(SerialConnection_Heartbeat); // retry
+            continue;
+          } else if (check_head_valid_func(tlv_head)) {
+            is_head_found = true;
+          } else {
+            LOG(DEBUG) << "drop invalid TLV head -- " << "tpye: " << tlv_head.type
+                       << ", length: " << tlv_head.length << ", nread: " << nread;
+            serial_->read(serial_->available());
+            continue;
+          }
+        }
+
+        // head found
+        if (recv_buffer.size() < tlv_head.length) {
+          recv_buffer.resize(tlv_head.length);
+        }
+
+        if (pack_lack > 0) {
+          nread = serial_->read((uint8_t *) recv_buffer.data() + pack_read, pack_lack);
+          pack_read += nread;
+          pack_lack -= nread;
         } else {
-          continue;
+          nread = serial_->read((uint8_t *) recv_buffer.data(), tlv_head.length);
+          if (nread < tlv_head.length) {
+            pack_read = nread;
+            pack_lack = tlv_head.length - nread;
+          }
         }
+
+        if (pack_lack > 0) continue;
+
+        // pack ready
+        pack_read = 0;
+        is_head_found = false;
+        handleTlvData(tlv_head.type, (uint8_t *) recv_buffer.data(), tlv_head.length);
+      } catch (serial::IOException &e) {
+        LOG(WARNING) << "serial receive exception: " << e.what();
       }
-
-      // head found
-      if (recv_buffer.size() < tlv_head.length) {
-        recv_buffer.resize(tlv_head.length);
-      }
-
-      if (pack_lack > 0) {
-        nread = serial_->read((uint8_t *) recv_buffer.data() + pack_read, pack_lack);
-        pack_read += nread;
-        pack_lack -= nread;
-      } else {
-        nread = serial_->read((uint8_t *) recv_buffer.data(), tlv_head.length);
-        if (nread < tlv_head.length) {
-          pack_read = nread;
-          pack_lack = tlv_head.length - nread;
-        }
-      }
-
-      if (pack_lack > 0) continue;
-
-      // pack ready
-      pack_read = 0;
-      is_head_found = false;
-      handleTlvData(tlv_head.type, (uint8_t *) recv_buffer.data(), tlv_head.length);
     }
   });
 }
@@ -234,8 +272,6 @@ void GeminiSerialPort::onConnected() {
   // handshake 3: send ack to server
   send(SerialConnection_Heartbeat);
   watchdog_->start();
-
-  send(SerialCommand_RequireUserFiles);
 }
 
 void GeminiSerialPort::onHeartbeat() {
@@ -317,25 +353,29 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
     }
       break;
     case SerialDataUnit_Lane: {
-//      auto *ldw_data_pack = (LdwDataPack*)(data);
-//      FrameExtension frame_ext;
-//      frame_ext.speed = speed_;
-//      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
-//                                                                         data_size, frame_ext, true));
-//      if (frame_holder.frame) {
-//        auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
-//        lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
-//        lane_frame->setSensor(sensor_owner_->shared_from_this());
-//        lane_frame->data().resize(data_size, 0);
-//        lane_frame->data().assign(data, data + data_size);
-//        sensor_owner_->dispatch_threaded(std::move(frame_holder));
-//      }
+      // TODO
+    }
+      break;
+    case SerialDataUnit_FreeSpace: {
+      FrameExtension frame_ext;
+      frame_ext.speed = speed_;
+      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_FREESPACE_FRAME,
+                                                                         data_size, frame_ext, true));
+      if (frame_holder.frame) {
+        auto free_space_frame = reinterpret_cast<FreeSpaceFrameData *>(frame_holder.frame);
+        free_space_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_FREESPACE_FRAME]);
+        free_space_frame->setSensor(sensor_owner_->shared_from_this());
+        free_space_frame->data().resize(data_size, 0);
+        free_space_frame->data().assign(data, data + data_size);
+        free_space_frame->loadFreeSpacePoints(data, data_size);
+        sensor_owner_->dispatch_threaded(std::move(frame_holder));
+      }
     }
       break;
     case SerialDataUnit_AlgorithResult: {
-      auto alg_res = (AlgorithmResult*)data;
+      auto alg_res = (AlgorithmResult *) data;
+//      LOG(INFO) << "AlgorithmResult: " << alg_res->dataSize;
       if (alg_res->dataType == AlgorithmResult::SmallObsLabel) {
-        LOG(INFO) << "AlgorithmResult: " << alg_res->dataSize;
         FrameExtension frame_ext;
         frame_ext.speed = speed_;
         FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_SMALL_OBS_FRAME,
@@ -349,18 +389,18 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
           sensor_owner_->dispatch_threaded(std::move(frame_holder));
         }
       } else if (alg_res->dataType == AlgorithmResult::JourneyLaneData) {
-          FrameExtension frame_ext;
-          frame_ext.speed = speed_;
-          FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
-                                                                             data_size, frame_ext, true));
-          if (frame_holder.frame) {
-            auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
-            lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
-            lane_frame->setSensor(sensor_owner_->shared_from_this());
-            lane_frame->data().resize(alg_res->dataSize, 0);
-            lane_frame->data().assign(alg_res->data, alg_res->data + alg_res->dataSize);
-            sensor_owner_->dispatch_threaded(std::move(frame_holder));
-          }
+        FrameExtension frame_ext;
+        frame_ext.speed = speed_;
+        FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
+                                                                           data_size, frame_ext, true));
+        if (frame_holder.frame) {
+          auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
+          lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
+          lane_frame->setSensor(sensor_owner_->shared_from_this());
+          lane_frame->data().resize(alg_res->dataSize, 0);
+          lane_frame->data().assign(alg_res->data, alg_res->data + alg_res->dataSize);
+          sensor_owner_->dispatch_threaded(std::move(frame_holder));
+        }
       }
     }
       break;

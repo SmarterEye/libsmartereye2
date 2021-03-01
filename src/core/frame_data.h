@@ -21,6 +21,7 @@
 #include "se_util.hpp"
 
 struct OutputObstacles;
+struct FreespacePoint;
 
 namespace libsmartereye2 {
 
@@ -215,6 +216,17 @@ class ObstacleFrameData : public FrameData {
  private:
   int num_ = 0;
   std::vector<std::shared_ptr<OutputObstacles>> obstacles_;
+};
+
+class FreeSpaceFrameData : public FrameData {
+ public:
+  void loadFreeSpacePoints(const uint8_t *data, uint32_t data_size);
+  int pointNum() const { return num_; }
+  const std::vector<std::shared_ptr<FreespacePoint>> &freeSpacePoints() const { return free_space_points_; }
+
+ private:
+  int num_ = 0;
+  std::vector<std::shared_ptr<FreespacePoint>> free_space_points_;
 };
 
 class LaneFrameData : public FrameData {

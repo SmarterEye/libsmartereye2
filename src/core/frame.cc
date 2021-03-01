@@ -19,6 +19,7 @@
 
 #include "core/frame.hpp"
 #include "core/frame_set.hpp"
+#include "alg/algorithmresult.h"
 #include "alg/obstacleData.h"
 #include "alg/LdwDataInterface.h"
 
@@ -200,6 +201,14 @@ int ObstacleFrame::num() const {
 
 std::vector<std::shared_ptr<OutputObstacles>> ObstacleFrame::obstacles() const {
   return dynamic_cast<libsmartereye2::ObstacleFrameData *>(get())->obstacles();
+}
+
+int FreeSpaceFrame::pointNum() const {
+  return dynamic_cast<libsmartereye2::FreeSpaceFrameData *>(get())->pointNum();
+}
+
+std::vector<std::shared_ptr<FreespacePoint>> FreeSpaceFrame::freeSpacePoints() const {
+  return dynamic_cast<libsmartereye2::FreeSpaceFrameData *>(get())->freeSpacePoints();
 }
 
 }  // namespace se2

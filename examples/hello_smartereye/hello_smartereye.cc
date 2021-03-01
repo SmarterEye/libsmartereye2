@@ -51,21 +51,21 @@ void handleCurrentFrame(const se2::Frame &current_frame) {
     }
       break;
     case FrameId::J2Perception: {
-      std::cout << "J2Perception: " << current_frame.dataSize() << std::endl;
+//      std::cout << "J2Perception: " << current_frame.dataSize() << std::endl;
     }
       break;
     case FrameId::Obstacle: {
       auto obstacle_frame = se2::ObstacleFrame(current_frame);
-      std::cout << "obs num: " << obstacle_frame.num() << std::endl;
-//      for (int i = 0; i < obstacle_frame.num(); i++) {
-//        auto obs = obstacle_frame.obstacles()[i];
-//        std::cout << (int)obs->trackId << " -- " << obs->avgDistanceZ << std::endl;
-//      }
+//      std::cout << "obs num: " << obstacle_frame.num() << std::endl;
+    }
+      break;
+    case FrameId::FreeSpace: {
+      auto free_space_frame = se2::FreeSpaceFrame(current_frame);
     }
       break;
     case FrameId::SmallObstacle: {
       auto small_obs_frame = se2::Frame(current_frame);
-      std::cout << "SmallObstacle: " << small_obs_frame.dataSize() << std::endl;
+//      std::cout << "SmallObstacle: " << small_obs_frame.dataSize() << std::endl;
     }
       break;
     default:break;

@@ -35,6 +35,7 @@ class SMARTEREYE2_API Pipeline {
   PipelineProfile start(const PipelineConfig &config, FrameCallbackPtr callback);
 
   void stop(bool force = false);
+  void restart(bool force = false);
   bool isConnected() const;
   FrameSet waitForFrames(uint32_t timeout_ms = 1000) const;
   bool pollForFrames(FrameSet *frame_set) const;

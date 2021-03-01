@@ -39,7 +39,6 @@ PipelinePrivate::PipelinePrivate(const std::shared_ptr<ContextPrivate> &context)
       device_hub_(context),
       synced_streams_({FrameId::CalibLeftCamera, FrameId::Disparity}),
       is_stopping_(false) {
-
 }
 
 PipelinePrivate::~PipelinePrivate() {
@@ -55,7 +54,26 @@ std::shared_ptr<PipelineProfilePrivate> PipelinePrivate::start(std::shared_ptr<P
     LOG(WARNING) << "start() cannot be called before stop()";
     return nullptr;
   }
+
   streams_callback_ = std::move(callback);
+  if (streams_callback_) {
+    // if get frame by callback, need get device changed status and restart
+    DevicesChangedCallbackPtr cb(new DevicesChangedCallback(
+        [this](DeviceChangedEvent &changed_event) {
+          PipelineProfile profile(std::make_shared<SePipelineProfile>(
+              SePipelineProfile{getActiveProfile()}
+          ));
+          auto dev = profile.getDevice();
+          if (changed_event.wasRemoved(dev)) {
+            LOG(DEBUG) << "pipeline: restart";
+            restart(true);
+          }
+        }
+    ));
+    registerInternalDeviceCallback(cb);
+  }
+  context_->start();
+
   return unsafeStart(std::move(conf)) ? unsafeGetActiveProfile() : nullptr;
 }
 
@@ -71,6 +89,15 @@ void PipelinePrivate::stop(bool force) {
     return;
   }
   unsafeStop();
+}
+
+void PipelinePrivate::restart(bool force) {
+  if (force) {
+    is_stopping_ = true;
+  }
+  auto prev_conf = prev_conf_;
+  unsafeStop();
+  unsafeStart(prev_conf);
 }
 
 bool PipelinePrivate::isConnected() const {
@@ -237,7 +264,6 @@ bool PipelinePrivate::unsafeStart(std::shared_ptr<PipelineConfigPrivate> conf) {
   FrameCallbackPtr callbacks = getCallback();
   multi_stream->start(callbacks);
 
-  context_->start();
   active_profile_ = profile;
   prev_conf_ = std::make_shared<PipelineConfigPrivate>(*conf);
   return true;
@@ -252,10 +278,8 @@ void PipelinePrivate::unsafeStop() {
     } catch (...) {
     } // Stop will throw if device was disconnected. TODO - refactoring anticipated
   }
-  context_->stop();
   active_profile_.reset();
   prev_conf_.reset();
-  streams_callback_.reset();
   is_stopping_ = false;
 }
 
@@ -293,7 +317,8 @@ PipelineProfile Pipeline::start(const PipelineConfig &config) {
 
 PipelineProfile Pipeline::start(FrameCallbackPtr callback) {
   auto config = std::make_shared<PipelineConfigPrivate>();
-  std::shared_ptr<SePipelineProfile> profile(new SePipelineProfile{pipeline_->pipeline->start(config, std::move(callback))});
+  std::shared_ptr<SePipelineProfile>
+      profile(new SePipelineProfile{pipeline_->pipeline->start(config, std::move(callback))});
   return PipelineProfile(profile);
 }
 
@@ -306,6 +331,10 @@ PipelineProfile Pipeline::start(const PipelineConfig &config, FrameCallbackPtr c
 
 void Pipeline::stop(bool force) {
   pipeline_->pipeline->stop(force);
+}
+
+void Pipeline::restart(bool force) {
+  pipeline_->pipeline->restart(force);
 }
 
 bool Pipeline::isConnected() const {

@@ -43,6 +43,7 @@ class PipelinePrivate : public std::enable_shared_from_this<PipelinePrivate> {
   std::shared_ptr<PipelineProfilePrivate> start(std::shared_ptr<PipelineConfigPrivate> conf,
                                                 FrameCallbackPtr callback = nullptr);
   void stop(bool force);
+  void restart(bool force);
   bool isConnected() const;
 
   int64_t registerInternalDeviceCallback(DevicesChangedCallbackPtr callback);

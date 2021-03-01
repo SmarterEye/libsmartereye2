@@ -121,7 +121,7 @@ std::shared_ptr<DeviceInterface> DeviceHubPrivate::createDevice(const std::strin
       }
     }
     catch (const std::exception &ex) {
-      LOG(WARNING) << "Could not open device " << ex.what();
+      LOG(WARNING) << "Could not open device: " << ex.what();
     }
   }
 

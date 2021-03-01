@@ -169,6 +169,7 @@ void GeminiSensor::open(const StreamProfiles &requests) {
   }
 
   is_opened_ = true;
+  serial_port_->open();
   setActiveStream(necessary_profiles);
 }
 
@@ -184,6 +185,7 @@ void GeminiSensor::close() {
 
   active_frame_infos_.clear();
   is_opened_ = false;
+  serial_port_->close();
   setActiveStream({});
 }
 
@@ -201,7 +203,6 @@ void GeminiSensor::start(FrameCallbackPtr callback) {
 
   frame_source_->set_callback(callback);
   startStream();
-  serial_port_->open();
 }
 
 void GeminiSensor::stop() {
@@ -216,7 +217,6 @@ void GeminiSensor::stop() {
   }
 
   stopStream();
-  serial_port_->close();
 }
 
 Intrinsics GeminiSensor::getIntrinsics() const {

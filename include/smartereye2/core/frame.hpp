@@ -22,6 +22,7 @@
 #include "smartereye2/streaming/stream_profile.hpp"
 
 struct OutputObstacles;
+struct FreespacePoint;
 
 namespace se2 {
 
@@ -157,6 +158,13 @@ class SMARTEREYE2_API ObstacleFrame : public Frame {
   explicit ObstacleFrame(const Frame &frame) : Frame(frame) {}
   int num() const;
   std::vector<std::shared_ptr<OutputObstacles>> obstacles() const;
+};
+
+class SMARTEREYE2_API FreeSpaceFrame : public Frame {
+ public:
+  explicit FreeSpaceFrame(const Frame &frame) : Frame(frame) {}
+  int pointNum() const;
+  std::vector<std::shared_ptr<FreespacePoint>> freeSpacePoints() const;
 };
 
 template<class T>

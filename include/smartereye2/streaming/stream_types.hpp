@@ -29,7 +29,7 @@ enum class FrameId : int {
   CalibLeftCamera = 1 << 2,
   CalibRightCamera = 1 << 3,
   DisparityDSBak = 1 << 4,
-  DisparityUV = 1 << 5,
+  FreeSpace = 1 << 5,
   Disparity = 1 << 6,
   DisparityPlus = 1 << 7,
   DisparityDS = 1 << 8,

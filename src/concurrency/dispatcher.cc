@@ -66,8 +66,6 @@ void Dispatcher::stop() {
 
   std::unique_lock<std::mutex> lock_was_flushed(was_flushed_mutex_);
   was_flushed_cv_.wait_for(lock_was_flushed, std::chrono::hours(999999), [&]() { return was_flushed_.load(); });
-
-  queue_.start();
 }
 
 Dispatcher::~Dispatcher() {
