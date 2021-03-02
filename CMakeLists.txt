@@ -8,6 +8,8 @@ include(cmake/version_config.cmake)
 # macro definition located at "cmake/common_config.cmake"
 config_cxx_flags()
 
+set(CMAKE_DEBUG_POSTFIX d)
+
 if(BUILD_SHARED_LIBS)
     add_library(${LSE2_TARGET} SHARED "")
 else()
@@ -18,7 +20,7 @@ include(3rdparty/CMakeLists.txt)
 include(include/CMakeLists.txt)
 include(src/CMakeLists.txt)
 
-add_dependencies(${LSE2_TARGET} usb serial uv)
+add_dependencies(${LSE2_TARGET} usb serial)
 
 target_link_libraries(${LSE2_TARGET}
         PRIVATE
@@ -37,12 +39,18 @@ target_include_directories(${LSE2_TARGET}
         ${JSON_INC_DIR}
         ${USB_INC_DIR}
         ${SERIAL_INC_DIR}
-        ${UV_INC_DIR}
         )
 
-# set library version
+set(OUTPUT_DIR "${PROJECT_SOURCE_DIR}/_output")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR}/bin)
+
 set_target_properties(${LSE2_TARGET}
         PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_DIR}/lib
+        LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR}/lib
+        RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR}/bin
         VERSION ${SMARTEREYE_VERSION_STRING}
         SOVERSION "${SMARTEREYE_VERSION_MAJOR}.${SMARTEREYE_VERSION_MINOR}")
 

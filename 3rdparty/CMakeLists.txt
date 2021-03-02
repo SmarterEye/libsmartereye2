@@ -14,5 +14,5 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/serial-1.2.1)
 set(SERIAL_INC_DIR ${CMAKE_CURRENT_LIST_DIR}/serial-1.2.1/include)
 
 # net
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/libuv)
-set(UV_INC_DIR ${CMAKE_CURRENT_LIST_DIR}/libuv/include)
+#add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/libuv)
+#set(UV_INC_DIR ${CMAKE_CURRENT_LIST_DIR}/libuv/include)

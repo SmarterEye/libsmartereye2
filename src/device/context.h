@@ -63,7 +63,7 @@ class ContextPrivate : public std::enable_shared_from_this<ContextPrivate> {
   std::shared_ptr<platform::Backend> backend_;
   std::shared_ptr<platform::DeviceWather> device_watcher_;
   std::map<std::string, std::weak_ptr<DeviceInfo>> playback_devices_;
-  std::map<int64_t, DevicesChangedCallbackPtr> devices_changed_callbacks_{};
+  std::map<int64_t, DevicesChangedCallbackPtr, std::greater<>> devices_changed_callbacks_{};
   std::map<int, std::weak_ptr<const StreamProfileBase>> streams_;
   mutable std::mutex streams_mtx_;
   mutable std::mutex devices_changed_callbacks_mtx_;
