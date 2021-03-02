@@ -88,6 +88,11 @@ StreamProfile VideoStreamProfile::clone(FrameId frame_id, int32_t index, FrameFo
   return StreamProfile(new SeStreamProfile{sp.get()});
 }
 
+StereoCalibrationParameters VideoStreamProfile::getStereoCalibParams() const {
+  auto vsp = dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_->profile);
+  return vsp->getStereoCalibParams();
+}
+
 Intrinsics VideoStreamProfile::getIntrinsics() const {
   auto vsp = dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_->profile);
   return vsp->getIntrinsics();

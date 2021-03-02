@@ -35,6 +35,12 @@ struct TLVStruct;
 
 class GeminiSerialPort {
  public:
+  enum class WorkingState{
+    Disconnected,
+    Syncing,
+    Connected,
+  };
+
   explicit GeminiSerialPort(GeminiSensor *owner);
   void init();
 
@@ -51,7 +57,9 @@ class GeminiSerialPort {
 
   void connect();
   void disconnect();
+  void retry();
 
+  void onSycing();
   void onConnected();
   void onHeartbeat();
   void onDisconnected();
@@ -66,7 +74,7 @@ class GeminiSerialPort {
   GeminiSensor *sensor_owner_;
 
   std::shared_ptr<Watchdog> watchdog_;
-  bool is_connecting_;
+  WorkingState working_state_;
 
   // virtual COM
   std::shared_ptr<serial::Serial> serial_;

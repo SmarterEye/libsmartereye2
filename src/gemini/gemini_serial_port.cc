@@ -24,6 +24,7 @@
 #include "alg/LdwDataInterface.h"
 #include "alg/obstacleData.h"
 #include "alg/algorithmresult.h"
+#include "alg/calibrationparams.h"
 
 #include "streaming/stream_profile.h"
 #include "se_types.hpp"
@@ -33,7 +34,7 @@ namespace libsmartereye2 {
 GeminiSerialPort::GeminiSerialPort(GeminiSensor *owner)
     : sensor_owner_(owner),
       watchdog_(nullptr),
-      is_connecting_(false),
+      working_state_(WorkingState::Disconnected),
       write_dispatcher_(std::make_shared<Dispatcher>(1)),
       serial_running_(false),
       speed_(0) {
@@ -174,6 +175,21 @@ void GeminiSerialPort::send(uint32_t command_type, const char *data, uint32_t da
 }
 
 void GeminiSerialPort::handleTlvData(uint32_t type, const uint8_t *data, uint32_t data_size) {
+  switch (working_state_) {
+    case WorkingState::Disconnected: {
+      LOG(ERROR) << "why received data before connected?";
+      break;
+    }
+    case WorkingState::Syncing: {
+      if (type != SerialConnection_Sync && type != SerialConnection_Ack) {
+        LOG(ERROR) << "waiting for sync and ack, but received wrong type " << type;
+        offerHand();  // wrong response while syncing, offerhand again
+      }
+      break;
+    }
+    default:break;
+  }
+
   if (type >= SerialDataUnit_None) {
     handleDataUnit(type, data, data_size);
   } else if (type >= SerialCommand_None) {
@@ -184,7 +200,9 @@ void GeminiSerialPort::handleTlvData(uint32_t type, const uint8_t *data, uint32_
 }
 
 void GeminiSerialPort::offerHand() {
-  // handshake 1: send sync to server
+  // handshake 1: send sync to server, wait sync response
+  working_state_ = WorkingState::Syncing;
+
   TLVStruct conn_cmd;
   conn_cmd.type = SerialConnection_Sync;
   std::string conn_data;
@@ -218,7 +236,7 @@ void GeminiSerialPort::connect() {
           nread = serial_->read((uint8_t *) &tlv_head, sizeof(TLVStruct));
           if (nread != sizeof(TLVStruct)) {
             LOG(DEBUG) << "read TLV head timeout";
-            send(SerialConnection_Heartbeat); // retry
+            retry();
             continue;
           } else if (check_head_valid_func(tlv_head)) {
             is_head_found = true;
@@ -264,14 +282,39 @@ void GeminiSerialPort::disconnect() {
   send(SerialConnection_Disconnect);
 }
 
+void GeminiSerialPort::retry() {
+  switch (working_state_) {
+    case WorkingState::Disconnected: {
+      LOG(ERROR) << "why received data before connected?";
+      break;
+    }
+    case WorkingState::Syncing: {
+      send(SerialConnection_Ack);
+      break;
+    }
+    case WorkingState::Connected: {
+      send(SerialConnection_Heartbeat);
+      break;
+    }
+    default:break;
+  }
+}
+
+void GeminiSerialPort::onSycing() {
+// handshake 2: received sync response from server
+  LOG(INFO) << "received sync response, send ack to server";
+}
+
 void GeminiSerialPort::onConnected() {
-  // handshake 2: recv sync from server
-  is_connecting_ = true;
+  working_state_ = WorkingState::Connected;
   LOG(INFO) << "serial port connected";
 
   // handshake 3: send ack to server
-  send(SerialConnection_Heartbeat);
+  send(SerialConnection_Ack);
   watchdog_->start();
+
+  // when connected, request stereo calib params first...
+  send(SerialCommand_RequireStereoCalibParams);
 }
 
 void GeminiSerialPort::onHeartbeat() {
@@ -282,13 +325,15 @@ void GeminiSerialPort::onHeartbeat() {
 }
 
 void GeminiSerialPort::onDisconnected() {
-  is_connecting_ = false;
+  working_state_ = WorkingState::Disconnected;
   LOG(INFO) << "serial port disconnected";
 }
 
 void GeminiSerialPort::handleConnection(uint32_t type, const uint8_t *data, uint32_t data_size) {
   switch (type) {
-    case SerialConnection_Sync:onConnected();
+    case SerialConnection_Sync:onSycing();
+      break;
+    case SerialConnection_Ack:onConnected();
       break;
     case SerialConnection_Heartbeat:onHeartbeat();
       break;
@@ -300,6 +345,26 @@ void GeminiSerialPort::handleConnection(uint32_t type, const uint8_t *data, uint
 
 void GeminiSerialPort::handleCommand(uint32_t type, const uint8_t *data, uint32_t data_size) {
   switch (type) {
+    case SerialCommand_RespondStereoCalibParams: {
+      if (data_size == sizeof(StereoCalibrationParameters)) {
+        auto *calib_params = (StereoCalibrationParameters *) data;
+        for (const auto &kvp : profiles_) {
+          auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
+          if (video_stream_profile != nullptr) {
+            video_stream_profile->setStereoCalibParams(*calib_params);
+          }
+        }
+        for (const auto &kvp : sensor_owner_->frame_id_to_profile_) {
+          auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
+          if (video_stream_profile != nullptr) {
+            video_stream_profile->setStereoCalibParams(*calib_params);
+          }
+        }
+      } else {
+        LOG(WARNING) << "SerialCommand_RespondStereoCalibParams error";
+      }
+    }
+      break;
     default:break;
   }
 }

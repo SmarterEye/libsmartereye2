@@ -32,13 +32,16 @@ enum SerialConnection {
   SerialConnection_None = kMinValidTypeValue,
   SerialConnection_Sync,
   SerialConnection_Heartbeat,
-  SerialConnection_Disconnect
+  SerialConnection_Disconnect,
+  SerialConnection_Ack,
 };
 
 enum SerialCommand {
   SerialCommand_None = SerialConnection_None + 8,
   SerialCommand_RequirePerception,   /**< Require perception data from device. */
-  SerialCommand_RequireUserFiles
+  SerialCommand_RequireUserFiles,
+  SerialCommand_RequireStereoCalibParams,
+  SerialCommand_RespondStereoCalibParams
 };
 
 enum SerialDataUnit {

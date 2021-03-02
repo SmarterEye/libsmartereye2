@@ -18,6 +18,7 @@
 #include "stream_types.hpp"
 #include "smartereye2/se_global.hpp"
 #include "smartereye2/device/device_types.hpp"
+#include "smartereye2/alg/calibrationparams.h"
 
 namespace se2 {
 
@@ -88,6 +89,7 @@ class SMARTEREYE2_API VideoStreamProfile : public StreamProfile {
 
   int width() const { return width_; }
   int height() const { return height_; }
+  StereoCalibrationParameters getStereoCalibParams() const;
   Intrinsics getIntrinsics() const;
 
  private:
