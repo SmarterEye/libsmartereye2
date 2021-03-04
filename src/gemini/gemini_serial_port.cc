@@ -315,6 +315,8 @@ void GeminiSerialPort::onConnected() {
 
   // when connected, request stereo calib params first...
   send(SerialCommand_RequireStereoCalibParams);
+  std::this_thread::sleep_for(std::chrono::microseconds(10));
+  requireUserFiles();
 }
 
 void GeminiSerialPort::onHeartbeat() {
@@ -439,7 +441,8 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
       break;
     case SerialDataUnit_AlgorithResult: {
       auto alg_res = (AlgorithmResult *) data;
-//      LOG(INFO) << "AlgorithmResult: " << alg_res->dataSize;
+//      LOG(INFO) << "alg_res->dataType: " << alg_res->dataType;
+//      LOG(INFO) << "alg_res->dataSize: " << alg_res->dataSize;
       if (alg_res->dataType == AlgorithmResult::SmallObsLabel) {
         FrameExtension frame_ext;
         frame_ext.speed = speed_;
