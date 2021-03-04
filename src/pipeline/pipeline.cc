@@ -72,9 +72,13 @@ std::shared_ptr<PipelineProfilePrivate> PipelinePrivate::start(std::shared_ptr<P
     ));
     registerInternalDeviceCallback(cb);
   }
-  context_->start();
 
-  return unsafeStart(std::move(conf)) ? unsafeGetActiveProfile() : nullptr;
+  if (unsafeStart(std::move(conf))) {
+    context_->start();
+    return unsafeGetActiveProfile();
+  } else {
+    return nullptr;
+  }
 }
 
 void PipelinePrivate::stop(bool force) {
