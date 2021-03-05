@@ -86,6 +86,10 @@ std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
       return std::make_shared<FrameArchive<SmallObstacleFrameData>>(in_max_frame_queue_size,
                                                            ts,
                                                            parsers);
+    case SeExtension::EXTENSION_TRAFFIC_SIGNAL_FRAME:
+        return std::make_shared<FrameArchive<TrafficSignalFrameData>>(in_max_frame_queue_size,
+                                                         ts,
+                                                         parsers);
 
     default:throw std::runtime_error("Requested frame type is not supported!");
   }
