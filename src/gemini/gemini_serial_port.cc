@@ -250,9 +250,6 @@ void GeminiSerialPort::connect() {
           } else if (check_head_valid_func(tlv_head)) {
             is_head_found = true;
           } else {
-            LOG(DEBUG) << "drop invalid TLV head -- " << "tpye: " << tlv_head.type
-                       << ", length: " << tlv_head.length << ", nread: " << nread;
-            serial_->read(serial_->available());
             continue;
           }
         }
@@ -298,10 +295,19 @@ void GeminiSerialPort::retry() {
       break;
     }
     case WorkingState::Syncing: {
+      static uint32_t retry_times = 0;
+      if (++retry_times > 5) {
+        // sync failed, offer hand for reconnect...
+        retry_times = 0;
+        onDisconnected();
+        offerHand();
+        return;
+      }
       send(SerialConnection_Ack);
       break;
     }
     case WorkingState::Connected: {
+      LOG(INFO) << "GeminiSerialPort: send fix Heartbeat";
       send(SerialConnection_Heartbeat);
       break;
     }
