@@ -497,7 +497,8 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
             lane_frame->data().assign(data, data + data_size);
             sensor_owner_->dispatch_threaded(std::move(frame_holder));
           }
-        } else if (alg_res->dataType == AlgorithmResult::TrafficSign) {
+        } else if (alg_res->dataType == AlgorithmResult::TrafficSign
+                   || alg_res->dataType == AlgorithmResult::TrafficLight) {
           FrameExtension frame_ext;
           frame_ext.speed = speed_;
           FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_TRAFFIC_SIGNAL_FRAME,
