@@ -86,7 +86,11 @@ std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
       return std::make_shared<FrameArchive<SmallObstacleFrameData>>(in_max_frame_queue_size,
                                                            ts,
                                                            parsers);
-    case SeExtension::EXTENSION_TRAFFIC_SIGNAL_FRAME:
+    case SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME:
+        return std::make_shared<FrameArchive<TrafficSignalFrameData>>(in_max_frame_queue_size,
+                                                         ts,
+                                                         parsers);
+    case SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME:
         return std::make_shared<FrameArchive<TrafficSignalFrameData>>(in_max_frame_queue_size,
                                                          ts,
                                                          parsers);

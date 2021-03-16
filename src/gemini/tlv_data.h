@@ -55,7 +55,9 @@ enum SerialDataUnit {
   SerialDataUnit_Obstacle,
   SerialDataUnit_Lane,
   SerialDataUnit_AlgorithResult,
-  SerialDataUnit_FreeSpace
+  SerialDataUnit_FreeSpace,
+  SerialDataUnit_TrafficSign,
+  SerialDataUnit_TrafficLight,
 };
 
 struct SerialFileHeader {

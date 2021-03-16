@@ -90,20 +90,29 @@ void GeminiSerialPort::init() {
   j2_profile->setUniqueId(Environment::instance().generateStreamId());
   j2_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
-  auto compound = std::make_shared<VideoStreamProfilePrivate>();
-  compound->setDims(1280, 720);
-  compound->setFrameId(FrameId::Compound);
-  compound->setFormat(FrameFormat::Custom);
-  compound->setFrameRate(25);
-  compound->setUniqueId(Environment::instance().generateStreamId());
-  compound->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+  auto tsr_profile = std::make_shared<VideoStreamProfilePrivate>();
+  tsr_profile->setDims(1280, 720);
+  tsr_profile->setFrameId(FrameId::TrafficSign);
+  tsr_profile->setFormat(FrameFormat::Custom);
+  tsr_profile->setFrameRate(25);
+  tsr_profile->setUniqueId(Environment::instance().generateStreamId());
+  tsr_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
+  auto tfl_profile = std::make_shared<VideoStreamProfilePrivate>();
+  tfl_profile->setDims(1280, 720);
+  tfl_profile->setFrameId(FrameId::TrafficLight);
+  tfl_profile->setFormat(FrameFormat::Custom);
+  tfl_profile->setFrameRate(25);
+  tfl_profile->setUniqueId(Environment::instance().generateStreamId());
+  tfl_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
   profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME] = obstacle_profile;
   profiles_[SeExtension::EXTENSION_LANE_FRAME] = lane_profile;
   profiles_[SeExtension::EXTENSION_FREESPACE_FRAME] = free_space_profile;
   profiles_[SeExtension::EXTENSION_SMALL_OBS_FRAME] = small_obstacle_profile;
   profiles_[SeExtension::EXTENSION_JOURNEY_FRAME] = j2_profile;
-  profiles_[SeExtension::EXTENSION_TRAFFIC_SIGNAL_FRAME] = compound;
+  profiles_[SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME] = tsr_profile;
+  profiles_[SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME] = tfl_profile;
 }
 
 void GeminiSerialPort::open() {
@@ -439,7 +448,18 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
     }
       break;
     case SerialDataUnit_Lane: {
-      // TODO
+        FrameExtension frame_ext;
+        frame_ext.speed = speed_;
+        FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
+                                                                           data_size, frame_ext, true));
+        if (frame_holder.frame) {
+          auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
+          lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
+          lane_frame->setSensor(sensor_owner_->shared_from_this());
+          lane_frame->data().resize(data_size, 0);
+          lane_frame->data().assign(data, data + data_size);
+          sensor_owner_->dispatch_threaded(std::move(frame_holder));
+        }
     }
       break;
     case SerialDataUnit_FreeSpace: {
@@ -454,6 +474,36 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
         free_space_frame->data().resize(data_size, 0);
         free_space_frame->data().assign(data, data + data_size);
         free_space_frame->loadFreeSpacePoints(data, data_size);
+        sensor_owner_->dispatch_threaded(std::move(frame_holder));
+      }
+    }
+      break;
+    case SerialDataUnit_TrafficSign: {
+      FrameExtension frame_ext;
+      frame_ext.speed = speed_;
+      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME,
+                                                                         data_size, frame_ext, true));
+      if (frame_holder.frame) {
+        auto free_space_frame = reinterpret_cast<FrameData *>(frame_holder.frame);
+        free_space_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME]);
+        free_space_frame->setSensor(sensor_owner_->shared_from_this());
+        free_space_frame->data().resize(data_size, 0);
+        free_space_frame->data().assign(data, data + data_size);
+        sensor_owner_->dispatch_threaded(std::move(frame_holder));
+      }
+    }
+      break;
+    case SerialDataUnit_TrafficLight: {
+      FrameExtension frame_ext;
+      frame_ext.speed = speed_;
+      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME,
+                                                                         data_size, frame_ext, true));
+      if (frame_holder.frame) {
+        auto free_space_frame = reinterpret_cast<FrameData *>(frame_holder.frame);
+        free_space_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME]);
+        free_space_frame->setSensor(sensor_owner_->shared_from_this());
+        free_space_frame->data().resize(data_size, 0);
+        free_space_frame->data().assign(data, data + data_size);
         sensor_owner_->dispatch_threaded(std::move(frame_holder));
       }
     }
@@ -475,46 +525,6 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
           small_obs_frame->data().assign(alg_res->data, alg_res->data + alg_res->dataSize);
           sensor_owner_->dispatch_threaded(std::move(frame_holder));
         }
-      } else if (alg_res->dataType == AlgorithmResult::JourneyLaneData) {
-        FrameExtension frame_ext;
-        frame_ext.speed = speed_;
-        FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
-                                                                           data_size, frame_ext, true));
-        if (frame_holder.frame) {
-          auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
-          lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
-          lane_frame->setSensor(sensor_owner_->shared_from_this());
-          lane_frame->data().resize(alg_res->dataSize, 0);
-          lane_frame->data().assign(alg_res->data, alg_res->data + alg_res->dataSize);
-          sensor_owner_->dispatch_threaded(std::move(frame_holder));
-        }
-      } else if (alg_res->dataType == AlgorithmResult::JourneyFreespace) {
-          FrameExtension frame_ext;
-          frame_ext.speed = speed_;
-          FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_FREESPACE_FRAME,
-                                                                             data_size, frame_ext, true));
-          if (frame_holder.frame) {
-            auto lane_frame = reinterpret_cast<FreeSpaceFrameData *>(frame_holder.frame);
-            lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_FREESPACE_FRAME]);
-            lane_frame->setSensor(sensor_owner_->shared_from_this());
-            lane_frame->data().resize(data_size, 0);
-            lane_frame->data().assign(data, data + data_size);
-            sensor_owner_->dispatch_threaded(std::move(frame_holder));
-          }
-        } else if (alg_res->dataType == AlgorithmResult::TrafficSign
-                   || alg_res->dataType == AlgorithmResult::TrafficLight) {
-          FrameExtension frame_ext;
-          frame_ext.speed = speed_;
-          FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_TRAFFIC_SIGNAL_FRAME,
-                                                                             data_size, frame_ext, true));
-          if (frame_holder.frame) {
-            auto lane_frame = reinterpret_cast<TrafficSignalFrameData *>(frame_holder.frame);
-            lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_TRAFFIC_SIGNAL_FRAME]);
-            lane_frame->setSensor(sensor_owner_->shared_from_this());
-            lane_frame->data().resize(data_size, 0);
-            lane_frame->data().assign(data, data + data_size);
-            sensor_owner_->dispatch_threaded(std::move(frame_holder));
-          }
        }
     }
       break;

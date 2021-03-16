@@ -14,6 +14,7 @@
 
 #ifndef LIBSMARTEREYE2_PROCESSING_H
 #define LIBSMARTEREYE2_PROCESSING_H
+#pragma warning (disable:4250)
 
 #include "core/options.h"
 #include "core/info.h"
