@@ -15,8 +15,10 @@
 #ifndef LIBSMARTEREYE2_STREAM_TYPES_HPP
 #define LIBSMARTEREYE2_STREAM_TYPES_HPP
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cert-err58-cpp"
+#endif
 
 #include <map>
 
@@ -28,18 +30,16 @@ enum class FrameId : int {
   RightCamera = 1 << 1,
   CalibLeftCamera = 1 << 2,
   CalibRightCamera = 1 << 3,
-  DisparityDSBak = 1 << 4,
-  FreeSpace = 1 << 5,
   Disparity = 1 << 6,
-  DisparityPlus = 1 << 7,
-  DisparityDS = 1 << 8,
-  Lane = 1 << 9,
-  Obstacle = 1 << 10,
-  Compound = 1 << 11,
   LDownSample = 1 << 12,
   RDownSample = 1 << 13,
-  J2Perception = 1 << 14,
-  SmallObstacle = 1 << 15,
+  Lane = 1 << 16,
+  Obstacle = 1 << 17,
+  FreeSpace = 1 << 18,
+  TrafficSign = 1 << 19,
+  TrafficLight = 1 << 20,
+  J2Perception = 1 << 21,
+  SmallObstacle = 1 << 22,
 };
 
 constexpr FrameId operator|(const FrameId self_value, const FrameId in_value) {
@@ -84,6 +84,7 @@ static int getBppByFormat(FrameFormat format) {
 
 }  // namespace se2
 
+#ifdef __clang__
 #pragma clang diagnostic pop
-
+#endif
 #endif //LIBSMARTEREYE2_STREAM_TYPES_HPP

@@ -14,6 +14,7 @@
 
 #ifndef LIBSMARTEREYE2_SENSOR_H
 #define LIBSMARTEREYE2_SENSOR_H
+#pragma warning (disable:4250)
 
 #include <memory>
 #include <utility>
