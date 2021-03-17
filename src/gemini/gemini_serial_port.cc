@@ -45,9 +45,10 @@ void GeminiSerialPort::init() {
   watchdog_ = std::make_shared<Watchdog>([this]() {
     LOG(DEBUG) << "onDisconnected by Watchdog";
     serial_->flush();
-    onDisconnected();
+    sensor_owner_->sendOpenCamCommand();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // wait for device open
     offerHand();  // reconnect
-  }, 8000);
+  }, 5000);
 
   auto obstacle_profile = std::make_shared<VideoStreamProfilePrivate>();
   obstacle_profile->setDims(1280, 720);
@@ -180,7 +181,7 @@ void GeminiSerialPort::send(uint32_t command_type, const char *data, uint32_t da
     } catch (serial::IOException &e) {
       LOG(DEBUG) << "serial write error: " << e.what();
     }
-  });
+  }, true);
 }
 
 void GeminiSerialPort::handleTlvData(uint32_t type, const uint8_t *data, uint32_t data_size) {
@@ -221,8 +222,6 @@ void GeminiSerialPort::offerHand() {
 }
 
 void GeminiSerialPort::connect() {
-  offerHand();
-
   serial_running_ = true;
   recv_thread_ = std::thread([this]() {
     size_t nread = 0;
@@ -282,6 +281,10 @@ void GeminiSerialPort::connect() {
       }
     }
   });
+
+  // wait for recv thread start
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  offerHand();
 }
 
 void GeminiSerialPort::disconnect() {
@@ -299,11 +302,8 @@ void GeminiSerialPort::retry() {
       if (++retry_times > 5) {
         // sync failed, offer hand for reconnect...
         retry_times = 0;
-        onDisconnected();
         offerHand();
-        return;
       }
-      send(SerialConnection_Ack);
       break;
     }
     case WorkingState::Connected: {
@@ -317,10 +317,14 @@ void GeminiSerialPort::retry() {
 
 void GeminiSerialPort::onSycing() {
 // handshake 2: received sync response from server
-  LOG(INFO) << "received sync response, send ack to server";
+  if (working_state_ == WorkingState::Syncing) {
+    LOG(INFO) << "received sync response, send ack to server";
+  }
 }
 
 void GeminiSerialPort::onConnected() {
+  if (working_state_ == WorkingState::Connected) return;
+
   working_state_ = WorkingState::Connected;
   LOG(INFO) << "serial port connected";
 

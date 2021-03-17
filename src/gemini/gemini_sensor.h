@@ -60,6 +60,7 @@ class GeminiSensor : public SensorBase, public VideoSensorInterface {
  protected:
   bool startStream();
   void stopStream();
+  void sendOpenCamCommand();
 
  private:
   friend class GeminiSerialPort;
