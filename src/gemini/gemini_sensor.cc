@@ -376,4 +376,10 @@ void GeminiSensor::handle_received_frames() {
   }
 }
 
+void GeminiSensor::sendOpenCamCommand() {
+  std::unique_ptr<platform::UsbCommonPackHead> response(new platform::UsbCommonPackHead);
+  dynamic_cast<GeminiDevice *>(device_owner_)->control_transfer_in(platform::UsbCommand::OPEN_CAM,
+                                                                   0, response.get(), sizeof(*response));
+}
+
 }  // namespace libsmartereye2
