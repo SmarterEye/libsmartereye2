@@ -16,10 +16,6 @@
 #include <opencv2/opencv.hpp>
 #include <utility>
 
-// algorithm output
-#include <smartereye2/alg/obstacleData.h>
-#include <smartereye2/alg/algorithmresult.h>
-
 //#define GET_SYNCED_FRAME
 
 using namespace se2;
@@ -53,7 +49,8 @@ void handleCurrentFrame(const se2::Frame &current_frame) {
     }
       break;
     case FrameId::J2Perception: {
-//      std::cout << "J2Perception: " << current_frame.dataSize() << std::endl;
+      auto j2_frame = se2::JourneyFrame(current_frame);
+//      std::cout << "J2Perception: " << j2_frame.timestamp() << " : " << j2_frame.meta().size() << std::endl;
     }
       break;
     case FrameId::Obstacle: {

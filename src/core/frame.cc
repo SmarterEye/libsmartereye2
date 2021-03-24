@@ -20,8 +20,6 @@
 #include "core/frame.hpp"
 #include "core/frame_set.hpp"
 #include "alg/algorithmresult.h"
-#include "alg/obstacleData.h"
-#include "alg/LdwDataInterface.h"
 
 namespace se2 {
 
@@ -195,11 +193,15 @@ SeVector3f MotionFrame::getMotionData() const {
   return SeVector3f{float_data[0], float_data[1], float_data[2]};
 }
 
+const std::string &JourneyFrame::meta() const {
+  return dynamic_cast<libsmartereye2::JourneyFrameData *>(get())->meta();
+}
+
 int ObstacleFrame::num() const {
   return dynamic_cast<libsmartereye2::ObstacleFrameData *>(get())->num();
 }
 
-std::vector<std::shared_ptr<OutputObstacles>> ObstacleFrame::obstacles() const {
+std::vector<std::shared_ptr<SEObstacle>> ObstacleFrame::obstacles() const {
   return dynamic_cast<libsmartereye2::ObstacleFrameData *>(get())->obstacles();
 }
 
@@ -207,7 +209,7 @@ int FreeSpaceFrame::pointNum() const {
   return dynamic_cast<libsmartereye2::FreeSpaceFrameData *>(get())->pointNum();
 }
 
-std::vector<std::shared_ptr<FreespacePoint>> FreeSpaceFrame::freeSpacePoints() const {
+std::vector<std::shared_ptr<SEFreeSpacePoint>> FreeSpaceFrame::freeSpacePoints() const {
   return dynamic_cast<libsmartereye2::FreeSpaceFrameData *>(get())->freeSpacePoints();
 }
 

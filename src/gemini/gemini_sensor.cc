@@ -93,9 +93,6 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
     profile->setUniqueId(Environment::instance().generateStreamId());
     profile->setIntrinsics(getIntrinsics());
     int tags = ProfileTag::PROFILE_TAG_DEFAULT | ProfileTag::PROFILE_TAG_SUPERSET;
-//    if (static_cast<FrameId>(frame_info.frame_id) & kNecessaryFrameIds) {
-//      tags |= ProfileTag::PROFILE_TAG_CAPTURE;
-//    }
     profile->tagProfile(tags);
     results.push_back(profile);
 
@@ -360,12 +357,10 @@ void GeminiSensor::handle_received_frames() {
                                                 raw_frame_with_embededline->embededline + embededline_size);
 
         auto img_size = info->data_size - 1280;
-        video->data().resize(img_size, 0);
-        video->data().assign(raw_frame_with_embededline->image, raw_frame_with_embededline->image + img_size);
+        video->loadData(raw_frame_with_embededline->image, img_size);
       } else {
         auto raw_frame = reinterpret_cast<RawUsbImageFrame *>(data_ptr);
-        video->data().resize(info->data_size, 0);
-        video->data().assign(raw_frame->image, raw_frame->image + info->data_size);
+        video->loadData(raw_frame->image, info->data_size);
       }
     } else {
       LOG(WARNING) << "Dropped frame. alloc_frame(...) returned nullptr";
