@@ -20,9 +20,7 @@
 #include "smartereye2/se_types.hpp"
 #include "smartereye2/se_callbacks.hpp"
 #include "smartereye2/streaming/stream_profile.hpp"
-
-struct OutputObstacles;
-struct FreespacePoint;
+#include "smartereye2/alg/packed_types.h"
 
 namespace se2 {
 
@@ -153,18 +151,24 @@ class SMARTEREYE2_API MotionFrame : public Frame {
   SeVector3f getMotionData() const;
 };
 
+class SMARTEREYE2_API JourneyFrame : public Frame {
+ public:
+  explicit JourneyFrame(const Frame &frame) : Frame(frame) {}
+  const std::string &meta() const;
+};
+
 class SMARTEREYE2_API ObstacleFrame : public Frame {
  public:
   explicit ObstacleFrame(const Frame &frame) : Frame(frame) {}
   int num() const;
-  std::vector<std::shared_ptr<OutputObstacles>> obstacles() const;
+  std::vector<std::shared_ptr<SEObstacle>> obstacles() const;
 };
 
 class SMARTEREYE2_API FreeSpaceFrame : public Frame {
  public:
   explicit FreeSpaceFrame(const Frame &frame) : Frame(frame) {}
   int pointNum() const;
-  std::vector<std::shared_ptr<FreespacePoint>> freeSpacePoints() const;
+  std::vector<std::shared_ptr<SEFreeSpacePoint>> freeSpacePoints() const;
 };
 
 template<class T>

@@ -54,7 +54,7 @@ enum SerialDataUnit {
   SerialDataUnit_J2Perception,
   SerialDataUnit_Obstacle,
   SerialDataUnit_Lane,
-  SerialDataUnit_AlgorithResult,
+  SerialDataUnit_AlgorithmResult,
   SerialDataUnit_FreeSpace,
   SerialDataUnit_TrafficSign,
   SerialDataUnit_TrafficLight,

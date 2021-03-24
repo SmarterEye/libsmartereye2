@@ -22,9 +22,18 @@
 
 #include <map>
 
+#ifndef FRAMEID_Q_ENUM
 namespace se2 {
+#endif
 
-enum class FrameId : int {
+// 0-15 bytes sync with device, only for video frame now
+// 16+ bytes for algorithm output(device's frameId does not contain)
+
+#ifdef FRAMEID_Q_ENUM
+enum Enumeration {
+#else
+enum class FrameId : uint32_t {
+#endif
   NotUsed = 0,
   LeftCamera = 1 << 0,
   RightCamera = 1 << 1,
@@ -41,6 +50,9 @@ enum class FrameId : int {
   J2Perception = 1 << 21,
   SmallObstacle = 1 << 22,
 };
+#ifdef FRAMEID_Q_ENUM
+Q_ENUM(Enumeration)
+#else
 
 constexpr FrameId operator|(const FrameId self_value, const FrameId in_value) {
   return static_cast<FrameId>(static_cast<uint32_t>(self_value) | static_cast<uint32_t>(in_value));
@@ -56,7 +68,7 @@ enum class FrameFormat : int {
   Color = 1,
   YUV422 = 2,
   RGB565 = 3,
-  YUV422Plannar = 4,
+  YUV422Planar = 4,
   Custom = 65,
   Disparity7 = 512,
   Disparity8,
@@ -67,24 +79,29 @@ enum class FrameFormat : int {
   DefaultFormat = Gray,
 };
 
-static const std::map<FrameFormat, int> kFrameFormate2bpp = {
+static const std::map<FrameFormat, int> kFrameFormat2bpp = {
     {FrameFormat::Gray, 1},
     {FrameFormat::Color, 3},
     {FrameFormat::YUV422, 2},
-    {FrameFormat::YUV422Plannar, 2},
+    {FrameFormat::YUV422Planar, 2},
     {FrameFormat::Disparity16, 2}
 };
 
 static int getBppByFormat(FrameFormat format) {
-  if (kFrameFormate2bpp.find(format) != kFrameFormate2bpp.end()) {
-    return kFrameFormate2bpp.at(format);
+  if (kFrameFormat2bpp.find(format) != kFrameFormat2bpp.end()) {
+    return kFrameFormat2bpp.at(format);
   }
   return 0;
 }
 
+#endif
+
+#ifndef FRAMEID_Q_ENUM
 }  // namespace se2
+#endif
 
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+
 #endif //LIBSMARTEREYE2_STREAM_TYPES_HPP

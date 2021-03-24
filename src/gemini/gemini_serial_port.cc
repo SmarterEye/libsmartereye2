@@ -21,8 +21,6 @@
 #include "tlv_data.h"
 #include "easylogging++.h"
 
-#include "alg/LdwDataInterface.h"
-#include "alg/obstacleData.h"
 #include "alg/algorithmresult.h"
 #include "alg/calibrationparams.h"
 
@@ -422,11 +420,9 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
       if (frame_holder.frame) {
         auto journey = reinterpret_cast<JourneyFrameData *>(frame_holder.frame);
         journey->setTimestamp(0); // TODO
-        journey->setTimestampDomain(TimestampDomain::SYSTEM_TIME);
         journey->setStreamProfile(profiles_[SeExtension::EXTENSION_JOURNEY_FRAME]);
         journey->setSensor(sensor_owner_->shared_from_this());
-        journey->data().resize(data_size, 0);
-        journey->data().assign(data, data + data_size);
+        journey->loadData(data, data_size);
         sensor_owner_->dispatch_threaded(std::move(frame_holder));
       }
     }
@@ -440,9 +436,7 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
         auto obstacle_frame = reinterpret_cast<ObstacleFrameData *>(frame_holder.frame);
         obstacle_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME]);
         obstacle_frame->setSensor(sensor_owner_->shared_from_this());
-        obstacle_frame->data().resize(data_size, 0);
-        obstacle_frame->data().assign(data, data + data_size);
-        obstacle_frame->loadObstacles(data, data_size);
+        obstacle_frame->loadData(data, data_size);
         sensor_owner_->dispatch_threaded(std::move(frame_holder));
       }
     }
@@ -456,8 +450,7 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
           auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
           lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
           lane_frame->setSensor(sensor_owner_->shared_from_this());
-          lane_frame->data().resize(data_size, 0);
-          lane_frame->data().assign(data, data + data_size);
+          lane_frame->loadData(data, data_size);
           sensor_owner_->dispatch_threaded(std::move(frame_holder));
         }
     }
@@ -471,9 +464,7 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
         auto free_space_frame = reinterpret_cast<FreeSpaceFrameData *>(frame_holder.frame);
         free_space_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_FREESPACE_FRAME]);
         free_space_frame->setSensor(sensor_owner_->shared_from_this());
-        free_space_frame->data().resize(data_size, 0);
-        free_space_frame->data().assign(data, data + data_size);
-        free_space_frame->loadFreeSpacePoints(data, data_size);
+        free_space_frame->loadData(data, data_size);
         sensor_owner_->dispatch_threaded(std::move(frame_holder));
       }
     }
@@ -484,11 +475,10 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
       FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME,
                                                                          data_size, frame_ext, true));
       if (frame_holder.frame) {
-        auto free_space_frame = reinterpret_cast<FrameData *>(frame_holder.frame);
-        free_space_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME]);
-        free_space_frame->setSensor(sensor_owner_->shared_from_this());
-        free_space_frame->data().resize(data_size, 0);
-        free_space_frame->data().assign(data, data + data_size);
+        auto tsr_frame = reinterpret_cast<TrafficSignFrameData *>(frame_holder.frame);
+        tsr_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME]);
+        tsr_frame->setSensor(sensor_owner_->shared_from_this());
+        tsr_frame->loadData(data, data_size);
         sensor_owner_->dispatch_threaded(std::move(frame_holder));
       }
     }
@@ -499,16 +489,15 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
       FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME,
                                                                          data_size, frame_ext, true));
       if (frame_holder.frame) {
-        auto free_space_frame = reinterpret_cast<FrameData *>(frame_holder.frame);
-        free_space_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME]);
-        free_space_frame->setSensor(sensor_owner_->shared_from_this());
-        free_space_frame->data().resize(data_size, 0);
-        free_space_frame->data().assign(data, data + data_size);
+        auto tfl_frame = reinterpret_cast<TrafficLightFrameData *>(frame_holder.frame);
+        tfl_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME]);
+        tfl_frame->setSensor(sensor_owner_->shared_from_this());
+        tfl_frame->loadData(data, data_size);
         sensor_owner_->dispatch_threaded(std::move(frame_holder));
       }
     }
       break;
-    case SerialDataUnit_AlgorithResult: {
+    case SerialDataUnit_AlgorithmResult: {
       auto alg_res = (AlgorithmResult *) data;
 //      LOG(INFO) << "alg_res->dataType: " << alg_res->dataType;
 //      LOG(INFO) << "alg_res->dataSize: " << alg_res->dataSize;
@@ -521,11 +510,11 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
           auto small_obs_frame = reinterpret_cast<SmallObstacleFrameData *>(frame_holder.frame);
           small_obs_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_SMALL_OBS_FRAME]);
           small_obs_frame->setSensor(sensor_owner_->shared_from_this());
-          small_obs_frame->data().resize(alg_res->dataSize, 0);
-          small_obs_frame->data().assign(alg_res->data, alg_res->data + alg_res->dataSize);
+          small_obs_frame->setTimestamp(alg_res->timestamp);
+          small_obs_frame->loadData((const uint8_t*)alg_res->data, alg_res->dataSize);
           sensor_owner_->dispatch_threaded(std::move(frame_holder));
         }
-       }
+      }
     }
       break;
     default:break;
