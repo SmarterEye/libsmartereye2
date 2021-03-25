@@ -15,21 +15,13 @@
 #ifndef LIBSMARTEREYE2_DEVICE_TYPES_HPP
 #define LIBSMARTEREYE2_DEVICE_TYPES_HPP
 
-// Stereo camera’s intrinsic and extrinsic params.
-struct Intrinsics {
-  int width;     /**< Width of the image in pixels */
-  int height;    /**< Height of the image in pixels */
-  float ppx;     /**< Horizontal coordinate of the principal point of the image, as a pixel offset from the left edge */
-  float ppy;     /**< Vertical coordinate of the principal point of the image, as a pixel offset from the top edge */
-  float fx;      /**< Focal length of the image plane, as a multiple of pixel width */
-  float fy;      /**< Focal length of the image plane, as a multiple of pixel height */
-  float coeffs[5]; /**< Distortion coefficients */
-};
+#include "alg/opense_camera.h"
 
-struct Extrinsics {
-  float rotation[9];
-  float translation[3];
-};
+namespace se2 {
+
+// Stereo camera intrinsic and extrinsic params.
+using Intrinsics = opense::CameraCalibParams;
+using Extrinsics = opense::CameraPositionParams;
 
 struct MotionDeviceIntrinsics {
   /* \internal
@@ -49,5 +41,7 @@ enum PlaybackStatus {
   PLAYBACK_STATUS_STOPPED, /**< All sensors were stopped, or playback has ended (all data was read). This is the initial playback status*/
   PLAYBACK_STATUS_COUNT
 };
+
+}  // namespace se2
 
 #endif //LIBSMARTEREYE2_DEVICE_TYPES_HPP

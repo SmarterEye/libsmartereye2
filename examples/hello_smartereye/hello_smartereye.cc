@@ -42,7 +42,8 @@ void handleCurrentFrame(const se2::Frame &current_frame) {
     case FrameId::Disparity: {
       auto disparity = se2::VideoFrame(current_frame);  // 4
       se2::VideoStreamProfile profile = static_cast<VideoStreamProfile>(disparity.getProfile());
-//      std::cout << "stereo calib focus: " << profile.getStereoCalibParams().focus << "..." << std::endl;
+//      std::cout << "Intrinsics: " << profile.getIntrinsics().lens_focus << " : " << profile.getIntrinsics().base_line << "..." << std::endl;
+//      std::cout << "Extrinsics: " << profile.getExtrinsics().translation.x << " : " << profile.getExtrinsics().translation.z << "..." << std::endl;
       cv::Mat disparity_mat(disparity.height(), disparity.width(), CV_16U, (void *) disparity.data());
       cv::normalize(disparity_mat, disparity_mat, 0, 255, cv::NORM_MINMAX, CV_8U);
       cv::imshow("disparity", disparity_mat);

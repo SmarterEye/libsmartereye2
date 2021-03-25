@@ -21,9 +21,6 @@
 #include "tlv_data.h"
 #include "easylogging++.h"
 
-#include "alg/algorithmresult.h"
-#include "alg/calibrationparams.h"
-
 #include "streaming/stream_profile.h"
 #include "se_types.hpp"
 
@@ -322,7 +319,7 @@ void GeminiSerialPort::retry() {
   }
 }
 
-void GeminiSerialPort::onSycing() {
+void GeminiSerialPort::onSyncing() {
 // handshake 2: received sync response from server
   if (working_state_ == WorkingState::Syncing) {
     LOG(INFO) << "received sync response, send ack to server";
@@ -339,9 +336,10 @@ void GeminiSerialPort::onConnected() {
   send(SerialConnection_Ack);
   watchdog_->start();
 
-  // when connected, request stereo calib params first...
-  send(SerialCommand_RequireStereoCalibParams);
-  std::this_thread::sleep_for(std::chrono::microseconds(10));
+  // when connected, request intrinsics and extrinsics first...
+  send(SerialCommand_RequireIntrinsics);
+  send(SerialCommand_RequireExtrinsics);
+  std::this_thread::sleep_for(std::chrono::microseconds(40));
   requireUserFiles();
 }
 
@@ -359,7 +357,7 @@ void GeminiSerialPort::onDisconnected() {
 
 void GeminiSerialPort::handleConnection(uint32_t type, const uint8_t *data, uint32_t data_size) {
   switch (type) {
-    case SerialConnection_Sync:onSycing();
+    case SerialConnection_Sync:onSyncing();
       break;
     case SerialConnection_Ack:onConnected();
       break;
@@ -373,19 +371,39 @@ void GeminiSerialPort::handleConnection(uint32_t type, const uint8_t *data, uint
 
 void GeminiSerialPort::handleCommand(uint32_t type, const uint8_t *data, uint32_t data_size) {
   switch (type) {
-    case SerialCommand_RespondStereoCalibParams: {
-      if (data_size == sizeof(StereoCalibrationParameters)) {
-        auto *calib_params = (StereoCalibrationParameters *) data;
+    case SerialCommand_RespondIntrinsics: {
+      if (data_size == sizeof(Intrinsics)) {
+        auto *intrinsics = (Intrinsics *) data;
         for (const auto &kvp : profiles_) {
           auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
           if (video_stream_profile != nullptr) {
-            video_stream_profile->setStereoCalibParams(*calib_params);
+            video_stream_profile->setIntrinsics(*intrinsics);
           }
         }
         for (const auto &kvp : sensor_owner_->frame_id_to_profile_) {
           auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
           if (video_stream_profile != nullptr) {
-            video_stream_profile->setStereoCalibParams(*calib_params);
+            video_stream_profile->setIntrinsics(*intrinsics);
+          }
+        }
+      } else {
+        LOG(WARNING) << "SerialCommand_RespondStereoCalibParams error";
+      }
+    }
+      break;
+    case SerialCommand_RespondExtrinsics: {
+      if (data_size == sizeof(Extrinsics)) {
+        auto *extrinsics = (Extrinsics *) data;
+        for (const auto &kvp : profiles_) {
+          auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
+          if (video_stream_profile != nullptr) {
+            video_stream_profile->setExtrinsics(*extrinsics);
+          }
+        }
+        for (const auto &kvp : sensor_owner_->frame_id_to_profile_) {
+          auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
+          if (video_stream_profile != nullptr) {
+            video_stream_profile->setExtrinsics(*extrinsics);
           }
         }
       } else {

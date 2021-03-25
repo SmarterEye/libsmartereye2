@@ -40,8 +40,10 @@ enum SerialCommand {
   SerialCommand_None = SerialConnection_None + 8,
   SerialCommand_RequirePerception,   /**< Require perception data from device. */
   SerialCommand_RequireUserFiles,
-  SerialCommand_RequireStereoCalibParams,
-  SerialCommand_RespondStereoCalibParams
+  SerialCommand_RequireIntrinsics,
+  SerialCommand_RespondIntrinsics,
+  SerialCommand_RequireExtrinsics,
+  SerialCommand_RespondExtrinsics
 };
 
 enum SerialDataUnit {

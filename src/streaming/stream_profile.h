@@ -16,7 +16,6 @@
 #define LIBSMARTEREYE2_STREAM_PROFILE_H
 
 #include "device/device_types.hpp"
-#include "alg/calibrationparams.h"
 #include "streaming.h"
 
 namespace libsmartereye2 {
@@ -36,10 +35,12 @@ class StreamProfileInterface : public StreamInterface {
   virtual FrameFormat format() const = 0;
   virtual uint32_t fps() const = 0;
   virtual int tag() const = 0;
+  virtual const Extrinsics &getExtrinsics() const = 0;
 
   virtual void setFormat(FrameFormat format) = 0;
   virtual void setFrameRate(uint32_t fps) = 0;
   virtual void tagProfile(int tag) = 0;
+  virtual void setExtrinsics(const Extrinsics &extrinsics) = 0;
 
   virtual std::shared_ptr<StreamProfileInterface> clone() const = 0;
 };
@@ -52,6 +53,7 @@ class StreamProfileBase : public virtual StreamProfileInterface {
   FrameFormat format() const override { return format_; }
   uint32_t fps() const override { return framerate_; }
   int tag() const override { return tag_; }
+  const Extrinsics &getExtrinsics() const override { return extrinsics_; }
 
   void setIndex(int32_t index) override { index_ = index; }
   void setUniqueId(int32_t uid) override { uid_ = uid; }
@@ -59,6 +61,7 @@ class StreamProfileBase : public virtual StreamProfileInterface {
   void setFormat(FrameFormat format) override { format_ = format; }
   void setFrameRate(uint32_t fps) override { framerate_ = fps; }
   void tagProfile(int tag) override { tag_ = tag; }
+  void setExtrinsics(const Extrinsics &extrinsics) override { extrinsics_ = extrinsics; }
 
   std::shared_ptr<StreamProfileInterface> clone() const override;
 
@@ -69,6 +72,7 @@ class StreamProfileBase : public virtual StreamProfileInterface {
   FrameId frame_id_ = FrameId::NotUsed;
   FrameFormat format_ = FrameFormat::Any;
   int tag_ = 0;
+  Extrinsics extrinsics_{};
 };
 
 class VideoStreamProfileInterface : public virtual StreamProfileInterface {
@@ -77,8 +81,6 @@ class VideoStreamProfileInterface : public virtual StreamProfileInterface {
   virtual int32_t height() const = 0;
   virtual void setDims(int32_t width, int32_t height) = 0;
 
-  virtual StereoCalibrationParameters getStereoCalibParams() const = 0;
-  virtual void setStereoCalibParams(const StereoCalibrationParameters &params) = 0;
   virtual Intrinsics getIntrinsics() const = 0;
   virtual void setIntrinsics(const Intrinsics &intrinsics) = 0;
 };
@@ -93,8 +95,6 @@ class VideoStreamProfilePrivate : public StreamProfileBase, public virtual Video
     height_ = height;
   }
 
-  StereoCalibrationParameters getStereoCalibParams() const override { return stereo_calib_params_; }
-  void setStereoCalibParams(const StereoCalibrationParameters &params) override { stereo_calib_params_ = params; }
   Intrinsics getIntrinsics() const override { return intrinsics_; }
   void setIntrinsics(const Intrinsics &intrinsics) override { intrinsics_ = intrinsics; }
 
@@ -104,7 +104,6 @@ class VideoStreamProfilePrivate : public StreamProfileBase, public virtual Video
   int width_ = 0;
   int height_ = 0;
   Intrinsics intrinsics_{};
-  StereoCalibrationParameters stereo_calib_params_{};
 };
 
 class MotionStreamProfileInterface : public virtual StreamProfileInterface {
