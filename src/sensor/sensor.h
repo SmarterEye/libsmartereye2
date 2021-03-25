@@ -100,6 +100,7 @@ class SensorBase : public virtual SensorInterface, public virtual OptionsContain
   mutable std::mutex active_profiles_mutex_;
 };
 
+using se2::Intrinsics;
 class VideoSensorInterface {
  public:
   virtual Intrinsics getIntrinsics() const = 0; // request Intrinsics without params

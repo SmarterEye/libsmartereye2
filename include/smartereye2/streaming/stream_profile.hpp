@@ -18,7 +18,10 @@
 #include "stream_types.hpp"
 #include "smartereye2/se_global.hpp"
 #include "smartereye2/device/device_types.hpp"
-#include "smartereye2/alg/calibrationparams.h"
+
+namespace libsmartereye2 {
+class StreamProfileInterface;
+}
 
 namespace se2 {
 
@@ -27,7 +30,6 @@ class SMARTEREYE2_API StreamProfile {
   StreamProfile() : profile_(nullptr) {}
   explicit StreamProfile(SeStreamProfile *profile);
 
-  explicit operator const SeStreamProfile *() { return profile_.get(); }
   explicit operator bool() const { return profile_ != nullptr; }
   bool operator==(const StreamProfile &rhs) const {
     return index() == rhs.index()
@@ -36,22 +38,12 @@ class SMARTEREYE2_API StreamProfile {
         && fps() == rhs.fps();
   }
 
-  const SeStreamProfile *get() const { return profile_.get(); }
-
-  int32_t index() const { return index_; }
-  int32_t uniqueId() const { return uid_; }
-  FrameId frameId() const { return frame_id_; }
-  FrameFormat format() const { return format_; }
-  uint32_t fps() const { return frame_rete_; }
-
-  void setIndex(int32_t index) { index_ = index; }
-  void setUniqueId(int32_t uid) { uid_ = uid; }
-  void setFrameId(FrameId frame_id) { frame_id_ = frame_id; }
-  void setFormat(FrameFormat format) { format_ = format; }
-  void setFrameRate(uint32_t fps) { frame_rete_ = fps; }
-
-  Extrinsics getExtrinsicsTo(const StreamProfile &to) const;
-  void registerExtrinsicsTo(const StreamProfile &to, Extrinsics extrinsics);
+  int32_t index() const;
+  int32_t uniqueId() const;
+  FrameId frameId() const;
+  FrameFormat format() const;
+  uint32_t fps() const;
+  Extrinsics getExtrinsics() const;
 
   template<typename T>
   bool is() const {
@@ -72,29 +64,16 @@ class SMARTEREYE2_API StreamProfile {
   friend class VideoStreamProfile;
   friend class MotionStreamProfile;
 
-  std::shared_ptr<SeStreamProfile> profile_;
-
-  int index_ = 0;
-  int uid_ = 0;
-  int frame_rete_ = 0;
-  FrameFormat format_ = FrameFormat::Any;
-  FrameId frame_id_ = FrameId::NotUsed;
+  libsmartereye2::StreamProfileInterface *profile_;
 };
 
 class SMARTEREYE2_API VideoStreamProfile : public StreamProfile {
  public:
   explicit VideoStreamProfile(const StreamProfile &sp);
-  StreamProfile clone(FrameId frame_id, int32_t index, FrameFormat format,
-                      int width, int height, const Intrinsics &intr) const;
 
-  int width() const { return width_; }
-  int height() const { return height_; }
-  StereoCalibrationParameters getStereoCalibParams() const;
+  int width() const;
+  int height() const;
   Intrinsics getIntrinsics() const;
-
- private:
-  int width_;
-  int height_;
 };
 
 class SMARTEREYE2_API MotionStreamProfile : public StreamProfile {

@@ -59,7 +59,7 @@ class GeminiSerialPort {
   void disconnect();
   void retry();
 
-  void onSycing();
+  void onSyncing();
   void onConnected();
   void onHeartbeat();
   void onDisconnected();
