@@ -101,6 +101,14 @@ void GeminiSerialPort::init() {
   tfl_profile->setUniqueId(Environment::instance().generateStreamId());
   tfl_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
+  auto flat_profile = std::make_shared<VideoStreamProfilePrivate>();
+  flat_profile->setDims(1280, 720);
+  flat_profile->setFrameId(FrameId::Flatness);
+  flat_profile->setFormat(FrameFormat::Custom);
+  flat_profile->setFrameRate(25);
+  flat_profile->setUniqueId(Environment::instance().generateStreamId());
+  flat_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
   profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME] = obstacle_profile;
   profiles_[SeExtension::EXTENSION_LANE_FRAME] = lane_profile;
   profiles_[SeExtension::EXTENSION_FREESPACE_FRAME] = free_space_profile;
@@ -108,6 +116,7 @@ void GeminiSerialPort::init() {
   profiles_[SeExtension::EXTENSION_JOURNEY_FRAME] = j2_profile;
   profiles_[SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME] = tsr_profile;
   profiles_[SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME] = tfl_profile;
+  profiles_[SeExtension::EXTENSION_FLATNESS_FRAME] = flat_profile;
 }
 
 void GeminiSerialPort::open() {
@@ -527,6 +536,19 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
         if (frame_holder.frame) {
           auto small_obs_frame = reinterpret_cast<SmallObstacleFrameData *>(frame_holder.frame);
           small_obs_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_SMALL_OBS_FRAME]);
+          small_obs_frame->setSensor(sensor_owner_->shared_from_this());
+          small_obs_frame->setTimestamp(alg_res->timestamp);
+          small_obs_frame->loadData((const uint8_t*)alg_res->data, alg_res->dataSize);
+          sensor_owner_->dispatch_threaded(std::move(frame_holder));
+        }
+      } else if (alg_res->dataType == AlgorithmResult::Flatness) {
+        FrameExtension frame_ext;
+        frame_ext.speed = speed_;
+        FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_FLATNESS_FRAME,
+                                                                           data_size, frame_ext, true));
+        if (frame_holder.frame) {
+          auto small_obs_frame = reinterpret_cast<FlatnessFrameData *>(frame_holder.frame);
+          small_obs_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_FLATNESS_FRAME]);
           small_obs_frame->setSensor(sensor_owner_->shared_from_this());
           small_obs_frame->setTimestamp(alg_res->timestamp);
           small_obs_frame->loadData((const uint8_t*)alg_res->data, alg_res->dataSize);

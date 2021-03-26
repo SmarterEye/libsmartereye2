@@ -90,6 +90,11 @@ std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
         return std::make_shared<FrameArchive<TrafficLightFrameData>>(in_max_frame_queue_size,
                                                                     ts,
                                                                     parsers);
+    case SeExtension::EXTENSION_FLATNESS_FRAME:
+        return std::make_shared<FrameArchive<FlatnessFrameData>>(in_max_frame_queue_size,
+                                                                  ts,
+                                                                  parsers);
+
 
     default:throw std::runtime_error("Requested frame type is not supported!");
   }
@@ -390,6 +395,14 @@ void TrafficLightFrameData::loadData(const uint8_t *data, uint32_t data_size) {
   for (int i = 0; i < num_; i++) {
     lights_.push_back(std::make_shared<SETFLData>(tfl_data->lights[i]));
   }
+}
+
+void FlatnessFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+
+  flatness_.reset(reinterpret_cast<FlatnessDataHead*>(new char[data_size]));
+  memcpy(flatness_.get(), data, data_size);
+
 }
 
 }  // namespace libsmartereye2
