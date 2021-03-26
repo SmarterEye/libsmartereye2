@@ -277,6 +277,15 @@ class TrafficLightFrameData : public FrameData {
   std::vector<std::shared_ptr<SETFLData>> lights_;
 };
 
+class FlatnessFrameData : public FrameData {
+ public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const std::shared_ptr<FlatnessDataHead> &flatnessData() const { return flatness_; }
+
+ private:
+  std::shared_ptr<FlatnessDataHead> flatness_;
+};
+
 }  // namespace libsmartereye2
 
 #endif //LIBSMARTEREYE2_FRAME_DATA_H
