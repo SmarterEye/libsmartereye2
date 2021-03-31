@@ -71,6 +71,10 @@ uint32_t StreamProfile::fps() const {
   return profile_->fps();
 }
 
+Intrinsics StreamProfile::getIntrinsics() const {
+  return profile_->getIntrinsics();
+}
+
 Extrinsics StreamProfile::getExtrinsics() const {
   return profile_->getExtrinsics();
 }
@@ -87,10 +91,6 @@ int VideoStreamProfile::width() const {
 
 int VideoStreamProfile::height() const {
   return dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_)->height();
-}
-
-Intrinsics VideoStreamProfile::getIntrinsics() const {
-  return dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_)->getIntrinsics();
 }
 
 MotionStreamProfile::MotionStreamProfile(const StreamProfile &sp)

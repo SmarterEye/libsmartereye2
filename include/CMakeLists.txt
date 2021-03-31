@@ -7,6 +7,7 @@ target_sources(${LSE2_TARGET}
 
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/alg/opense_basic_type.h"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/alg/opense_camera.h"
+        "${CMAKE_CURRENT_LIST_DIR}/smartereye2/alg/opense_vehicle.h"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/alg/packed_types.h"
         "${CMAKE_CURRENT_LIST_DIR}/smartereye2/alg/algorithmresult.h"
 

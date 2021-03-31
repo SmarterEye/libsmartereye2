@@ -22,6 +22,7 @@
 #include "easylogging++.h"
 
 #include "streaming/stream_profile.h"
+#include "alg/algorithmresult.h"
 #include "se_types.hpp"
 
 namespace libsmartereye2 {
@@ -45,69 +46,67 @@ void GeminiSerialPort::init() {
     offerHand();  // reconnect
   }, 5000);
 
-  auto obstacle_profile = std::make_shared<VideoStreamProfilePrivate>();
-  obstacle_profile->setDims(1280, 720);
+  auto obstacle_profile = std::make_shared<StreamProfileBase>();
   obstacle_profile->setFrameId(FrameId::Obstacle);
   obstacle_profile->setFormat(FrameFormat::Custom);
   obstacle_profile->setFrameRate(25);
   obstacle_profile->setUniqueId(Environment::instance().generateStreamId());
   obstacle_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
-  auto lane_profile = std::make_shared<VideoStreamProfilePrivate>();
-  lane_profile->setDims(1280, 720);
+  auto lane_profile = std::make_shared<StreamProfileBase>();
   lane_profile->setFrameId(FrameId::Lane);
   lane_profile->setFormat(FrameFormat::Custom);
   lane_profile->setFrameRate(25);
   lane_profile->setUniqueId(Environment::instance().generateStreamId());
   lane_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
-  auto free_space_profile = std::make_shared<VideoStreamProfilePrivate>();
-  free_space_profile->setDims(1280, 720);
+  auto free_space_profile = std::make_shared<StreamProfileBase>();
   free_space_profile->setFrameId(FrameId::FreeSpace);
   free_space_profile->setFormat(FrameFormat::Custom);
   free_space_profile->setFrameRate(25);
   free_space_profile->setUniqueId(Environment::instance().generateStreamId());
   free_space_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
-  auto small_obstacle_profile = std::make_shared<VideoStreamProfilePrivate>();
-  small_obstacle_profile->setDims(1280, 720);
+  auto small_obstacle_profile = std::make_shared<StreamProfileBase>();
   small_obstacle_profile->setFrameId(FrameId::SmallObstacle);
   small_obstacle_profile->setFormat(FrameFormat::Custom);
   small_obstacle_profile->setFrameRate(25);
   small_obstacle_profile->setUniqueId(Environment::instance().generateStreamId());
   small_obstacle_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
-  auto j2_profile = std::make_shared<VideoStreamProfilePrivate>();
-  j2_profile->setDims(1280, 720);
+  auto j2_profile = std::make_shared<StreamProfileBase>();
   j2_profile->setFrameId(FrameId::J2Perception);
   j2_profile->setFormat(FrameFormat::Custom);
   j2_profile->setFrameRate(25);
   j2_profile->setUniqueId(Environment::instance().generateStreamId());
   j2_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
-  auto tsr_profile = std::make_shared<VideoStreamProfilePrivate>();
-  tsr_profile->setDims(1280, 720);
+  auto tsr_profile = std::make_shared<StreamProfileBase>();
   tsr_profile->setFrameId(FrameId::TrafficSign);
   tsr_profile->setFormat(FrameFormat::Custom);
   tsr_profile->setFrameRate(25);
   tsr_profile->setUniqueId(Environment::instance().generateStreamId());
   tsr_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
-  auto tfl_profile = std::make_shared<VideoStreamProfilePrivate>();
-  tfl_profile->setDims(1280, 720);
+  auto tfl_profile = std::make_shared<StreamProfileBase>();
   tfl_profile->setFrameId(FrameId::TrafficLight);
   tfl_profile->setFormat(FrameFormat::Custom);
   tfl_profile->setFrameRate(25);
   tfl_profile->setUniqueId(Environment::instance().generateStreamId());
   tfl_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
-  auto flat_profile = std::make_shared<VideoStreamProfilePrivate>();
-  flat_profile->setDims(1280, 720);
+  auto flat_profile = std::make_shared<StreamProfileBase>();
   flat_profile->setFrameId(FrameId::Flatness);
   flat_profile->setFormat(FrameFormat::Custom);
   flat_profile->setFrameRate(25);
   flat_profile->setUniqueId(Environment::instance().generateStreamId());
   flat_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
+  auto vehicle_info_profile = std::make_shared<StreamProfileBase>();
+  vehicle_info_profile->setFrameId(FrameId::VehicleInfo);
+  vehicle_info_profile->setFormat(FrameFormat::Custom);
+  vehicle_info_profile->setUniqueId(Environment::instance().generateStreamId());
+  vehicle_info_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
   profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME] = obstacle_profile;
   profiles_[SeExtension::EXTENSION_LANE_FRAME] = lane_profile;
@@ -117,6 +116,7 @@ void GeminiSerialPort::init() {
   profiles_[SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME] = tsr_profile;
   profiles_[SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME] = tfl_profile;
   profiles_[SeExtension::EXTENSION_FLATNESS_FRAME] = flat_profile;
+  profiles_[SeExtension::EXTENSION_VEHICLE_INFO_FRAME] = vehicle_info_profile;
 }
 
 void GeminiSerialPort::open() {
@@ -383,40 +383,30 @@ void GeminiSerialPort::handleCommand(uint32_t type, const uint8_t *data, uint32_
     case SerialCommand_RespondIntrinsics: {
       if (data_size == sizeof(Intrinsics)) {
         auto *intrinsics = (Intrinsics *) data;
+        sensor_owner_->intrinsics_ = *intrinsics;
         for (const auto &kvp : profiles_) {
-          auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
-          if (video_stream_profile != nullptr) {
-            video_stream_profile->setIntrinsics(*intrinsics);
-          }
+          kvp.second->setIntrinsics(*intrinsics);
         }
         for (const auto &kvp : sensor_owner_->frame_id_to_profile_) {
-          auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
-          if (video_stream_profile != nullptr) {
-            video_stream_profile->setIntrinsics(*intrinsics);
-          }
+          kvp.second->setIntrinsics(*intrinsics);
         }
       } else {
-        LOG(WARNING) << "SerialCommand_RespondStereoCalibParams error";
+        LOG(WARNING) << "SerialCommand_RespondIntrinsics error";
       }
     }
       break;
     case SerialCommand_RespondExtrinsics: {
       if (data_size == sizeof(Extrinsics)) {
         auto *extrinsics = (Extrinsics *) data;
+        sensor_owner_->extrinsics_ = *extrinsics;
         for (const auto &kvp : profiles_) {
-          auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
-          if (video_stream_profile != nullptr) {
-            video_stream_profile->setExtrinsics(*extrinsics);
-          }
+          kvp.second->setExtrinsics(*extrinsics);
         }
         for (const auto &kvp : sensor_owner_->frame_id_to_profile_) {
-          auto video_stream_profile = dynamic_cast<VideoStreamProfileInterface *>(kvp.second.get());
-          if (video_stream_profile != nullptr) {
-            video_stream_profile->setExtrinsics(*extrinsics);
-          }
+          kvp.second->setExtrinsics(*extrinsics);
         }
       } else {
-        LOG(WARNING) << "SerialCommand_RespondStereoCalibParams error";
+        LOG(WARNING) << "SerialCommand_RespondExtrinsics error";
       }
     }
       break;
@@ -446,7 +436,6 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
                                                                          data_size, frame_ext, true));
       if (frame_holder.frame) {
         auto journey = reinterpret_cast<JourneyFrameData *>(frame_holder.frame);
-        journey->setTimestamp(0); // TODO
         journey->setStreamProfile(profiles_[SeExtension::EXTENSION_JOURNEY_FRAME]);
         journey->setSensor(sensor_owner_->shared_from_this());
         journey->loadData(data, data_size);
@@ -469,17 +458,17 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
     }
       break;
     case SerialDataUnit_Lane: {
-        FrameExtension frame_ext;
-        frame_ext.speed = speed_;
-        FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
-                                                                           data_size, frame_ext, true));
-        if (frame_holder.frame) {
-          auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
-          lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
-          lane_frame->setSensor(sensor_owner_->shared_from_this());
-          lane_frame->loadData(data, data_size);
-          sensor_owner_->dispatch_threaded(std::move(frame_holder));
-        }
+      FrameExtension frame_ext;
+      frame_ext.speed = speed_;
+      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_LANE_FRAME,
+                                                                         data_size, frame_ext, true));
+      if (frame_holder.frame) {
+        auto lane_frame = reinterpret_cast<LaneFrameData *>(frame_holder.frame);
+        lane_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_LANE_FRAME]);
+        lane_frame->setSensor(sensor_owner_->shared_from_this());
+        lane_frame->loadData(data, data_size);
+        sensor_owner_->dispatch_threaded(std::move(frame_holder));
+      }
     }
       break;
     case SerialDataUnit_FreeSpace: {
@@ -524,6 +513,20 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
       }
     }
       break;
+    case SerialDataUnit_VehicleRealTimeInfo: {
+      FrameExtension frame_ext;
+      frame_ext.speed = speed_;
+      FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_VEHICLE_INFO_FRAME,
+                                                                         data_size, frame_ext, true));
+      if (frame_holder.frame) {
+        auto vehicle_frame = reinterpret_cast<VehicleInfoFrameData *>(frame_holder.frame);
+        vehicle_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_VEHICLE_INFO_FRAME]);
+        vehicle_frame->setSensor(sensor_owner_->shared_from_this());
+        vehicle_frame->loadData(data, data_size);
+        sensor_owner_->dispatch_threaded(std::move(frame_holder));
+      }
+    }
+      break;
     case SerialDataUnit_AlgorithmResult: {
       auto alg_res = (AlgorithmResult *) data;
 //      LOG(INFO) << "alg_res->dataType: " << alg_res->dataType;
@@ -538,7 +541,7 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
           small_obs_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_SMALL_OBS_FRAME]);
           small_obs_frame->setSensor(sensor_owner_->shared_from_this());
           small_obs_frame->setTimestamp(alg_res->timestamp);
-          small_obs_frame->loadData((const uint8_t*)alg_res->data, alg_res->dataSize);
+          small_obs_frame->loadData((const uint8_t *) alg_res->data, alg_res->dataSize);
           sensor_owner_->dispatch_threaded(std::move(frame_holder));
         }
       } else if (alg_res->dataType == AlgorithmResult::Flatness) {
@@ -547,11 +550,11 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
         FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_FLATNESS_FRAME,
                                                                            data_size, frame_ext, true));
         if (frame_holder.frame) {
-          auto small_obs_frame = reinterpret_cast<FlatnessFrameData *>(frame_holder.frame);
-          small_obs_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_FLATNESS_FRAME]);
-          small_obs_frame->setSensor(sensor_owner_->shared_from_this());
-          small_obs_frame->setTimestamp(alg_res->timestamp);
-          small_obs_frame->loadData((const uint8_t*)alg_res->data, alg_res->dataSize);
+          auto flatness_frame = reinterpret_cast<FlatnessFrameData *>(frame_holder.frame);
+          flatness_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_FLATNESS_FRAME]);
+          flatness_frame->setSensor(sensor_owner_->shared_from_this());
+          flatness_frame->setTimestamp(alg_res->timestamp);
+          flatness_frame->loadData((const uint8_t *) alg_res->data, alg_res->dataSize);
           sensor_owner_->dispatch_threaded(std::move(frame_holder));
         }
       }

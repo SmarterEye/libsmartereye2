@@ -18,9 +18,9 @@
 #include "frame.h"
 #include "frame_archive.h"
 #include "core/core_types.hpp"
+#include "device/device_types.hpp"
 #include "se_util.hpp"
 #include "alg/packed_types.h"
-#include "alg/algorithmresult.h"
 
 namespace libsmartereye2 {
 
@@ -179,11 +179,6 @@ class DepthFrameData : public VideoFrameData {
 class DisparityData : public DepthFrameData {
  public:
   DisparityData() : DepthFrameData() {}
-
-  float stereoBaseline() const { return queryStereoBaseline(getSensor()); }
-
- private:
-  static float queryStereoBaseline(const std::shared_ptr<SensorInterface> &sensor);
 };
 
 class MotionFrameData : public FrameData {
@@ -251,10 +246,6 @@ class LaneFrameData : public FrameData {
 class SmallObstacleFrameData : public FrameData {
  public:
   void loadData(const uint8_t *data, uint32_t data_size) override;
-  const std::shared_ptr<SmallObsLabel> &labelMap() const { return label_map_; }
-
- private:
-  std::shared_ptr<SmallObsLabel> label_map_ = nullptr;
 };
 
 class TrafficSignFrameData : public FrameData {
@@ -280,10 +271,15 @@ class TrafficLightFrameData : public FrameData {
 class FlatnessFrameData : public FrameData {
  public:
   void loadData(const uint8_t *data, uint32_t data_size) override;
-  const std::shared_ptr<FlatnessDataHead> &flatnessData() const { return flatness_; }
+};
+
+class VehicleInfoFrameData : public FrameData {
+ public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const VehicleInfo &vehicleInfo() const { return vehicle_info_; }
 
  private:
-  std::shared_ptr<FlatnessDataHead> flatness_;
+  VehicleInfo vehicle_info_;
 };
 
 }  // namespace libsmartereye2

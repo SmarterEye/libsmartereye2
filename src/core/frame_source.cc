@@ -46,7 +46,8 @@ void FrameSource::init(std::shared_ptr<MetadataParserMap> metadata_parsers) {
       SeExtension::EXTENSION_SMALL_OBS_FRAME,
       SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME,
       SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME,
-      SeExtension::EXTENSION_FLATNESS_FRAME
+      SeExtension::EXTENSION_FLATNESS_FRAME,
+      SeExtension::EXTENSION_VEHICLE_INFO_FRAME
   };
 
   for (auto type : supported) {

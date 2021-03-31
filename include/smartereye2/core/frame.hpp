@@ -171,6 +171,12 @@ class SMARTEREYE2_API FreeSpaceFrame : public Frame {
   std::vector<std::shared_ptr<SEFreeSpacePoint>> freeSpacePoints() const;
 };
 
+class SMARTEREYE2_API VehicleInfoFrame : public Frame {
+ public:
+  explicit VehicleInfoFrame(const Frame &frame) : Frame(frame) {}
+  VehicleInfo vehicleInfo() const;
+};
+
 template<class T>
 class FramCallback : public SeFrameCallback {
   T on_frame_function_;

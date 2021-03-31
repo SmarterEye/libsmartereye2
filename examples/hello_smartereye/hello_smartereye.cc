@@ -41,7 +41,7 @@ void handleCurrentFrame(const se2::Frame &current_frame) {
       break;
     case FrameId::Disparity: {
       auto disparity = se2::VideoFrame(current_frame);  // 4
-      se2::VideoStreamProfile profile = static_cast<VideoStreamProfile>(disparity.getProfile());
+//      se2::VideoStreamProfile profile = static_cast<VideoStreamProfile>(disparity.getProfile());
 //      std::cout << "Intrinsics: " << profile.getIntrinsics().lens_focus << " : " << profile.getIntrinsics().base_line << "..." << std::endl;
 //      std::cout << "Extrinsics: " << profile.getExtrinsics().translation.x << " : " << profile.getExtrinsics().translation.z << "..." << std::endl;
       cv::Mat disparity_mat(disparity.height(), disparity.width(), CV_16U, (void *) disparity.data());
@@ -68,6 +68,10 @@ void handleCurrentFrame(const se2::Frame &current_frame) {
 //      std::cout << "SmallObstacle: " << small_obs_frame.dataSize() << std::endl;
     }
       break;
+    case FrameId::VehicleInfo: {
+      auto vehicle_info_frame = se2::VehicleInfoFrame(current_frame);
+//      std::cout << "VehicleInfo: " << vehicle_info_frame.vehicleInfo().yaw_rate << " : " << vehicle_info_frame.vehicleInfo().ego_speed << std::endl;
+    }
     default:break;
   }
 }

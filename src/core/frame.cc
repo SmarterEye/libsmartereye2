@@ -164,7 +164,8 @@ float DepthFrame::units() const {
 }
 
 float DisparityFrame::baseline() const {
-  return dynamic_cast<libsmartereye2::DisparityData *>(get())->stereoBaseline();
+  // TODO
+  return 0.f;
 }
 
 Points::Points(const Frame &frame)
@@ -211,6 +212,10 @@ int FreeSpaceFrame::pointNum() const {
 
 std::vector<std::shared_ptr<SEFreeSpacePoint>> FreeSpaceFrame::freeSpacePoints() const {
   return dynamic_cast<libsmartereye2::FreeSpaceFrameData *>(get())->freeSpacePoints();
+}
+
+VehicleInfo VehicleInfoFrame::vehicleInfo() const {
+  return dynamic_cast<libsmartereye2::VehicleInfoFrameData *>(get())->vehicleInfo();
 }
 
 }  // namespace se2

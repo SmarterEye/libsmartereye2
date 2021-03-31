@@ -15,13 +15,16 @@
 #ifndef LIBSMARTEREYE2_DEVICE_TYPES_HPP
 #define LIBSMARTEREYE2_DEVICE_TYPES_HPP
 
-#include "alg/opense_camera.h"
+#include "smartereye2/alg/opense_camera.h"
+#include "smartereye2/alg/opense_vehicle.h"
 
 namespace se2 {
 
 // Stereo camera intrinsic and extrinsic params.
 using Intrinsics = opense::CameraCalibParams;
 using Extrinsics = opense::CameraPositionParams;
+
+using VehicleInfo = opense::VehicleRealTimeInfo;
 
 struct MotionDeviceIntrinsics {
   /* \internal

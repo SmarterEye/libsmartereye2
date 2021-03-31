@@ -43,6 +43,7 @@ class SMARTEREYE2_API StreamProfile {
   FrameId frameId() const;
   FrameFormat format() const;
   uint32_t fps() const;
+  Intrinsics getIntrinsics() const;
   Extrinsics getExtrinsics() const;
 
   template<typename T>
@@ -73,7 +74,6 @@ class SMARTEREYE2_API VideoStreamProfile : public StreamProfile {
 
   int width() const;
   int height() const;
-  Intrinsics getIntrinsics() const;
 };
 
 class SMARTEREYE2_API MotionStreamProfile : public StreamProfile {

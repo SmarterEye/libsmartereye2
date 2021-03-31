@@ -60,6 +60,7 @@ enum SerialDataUnit {
   SerialDataUnit_FreeSpace,
   SerialDataUnit_TrafficSign,
   SerialDataUnit_TrafficLight,
+  SerialDataUnit_VehicleRealTimeInfo
 };
 
 struct SerialFileHeader {

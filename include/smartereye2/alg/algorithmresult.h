@@ -2,7 +2,7 @@
 #define FREE_SPACE_DATA_H
 
 #include <cstdint>
-#include "opense_basic_type.h"
+#include "alg/opense_basic_type.h"
 #pragma pack(push, 1)
 
 struct AlgorithmResult {
@@ -34,12 +34,19 @@ struct FlatnessDataHead {
   char data[0];
 };
 
-struct SmallObsLabel {
+struct ParsingLabels {
+  enum DataType {
+    J2ParsingLabel,
+    SmallObsLabel,
+    FreespaceLabel,
+    FlatnessLabel,
+  };
+
+  uint32_t type;
+  uint64_t timestamp;
+  uint32_t bpp;
+  uint32_t size;
   opense::Rect<int> roi;
-  int bpp;
-  int rows;
-  int cols;
-  int size;
   char data[0];
 };
 

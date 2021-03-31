@@ -20,6 +20,7 @@
 #include <atomic>
 
 #include "se_types.hpp"
+#include "core/core_types.hpp"
 
 namespace serial {
 class Serial;
@@ -30,7 +31,7 @@ namespace libsmartereye2 {
 class GeminiSensor;
 class Dispatcher;
 class Watchdog;
-class VideoStreamProfilePrivate;
+class StreamProfileBase;
 struct TLVStruct;
 
 class GeminiSerialPort {
@@ -83,7 +84,7 @@ class GeminiSerialPort {
   bool serial_running_;
 
   std::atomic<int64_t> speed_;
-  std::map<SeExtension, std::shared_ptr<VideoStreamProfilePrivate>> profiles_;
+  std::map<SeExtension, std::shared_ptr<StreamProfileBase>> profiles_;
 };
 
 }  // namespace libsmartereye2

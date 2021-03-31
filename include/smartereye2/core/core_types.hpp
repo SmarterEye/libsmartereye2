@@ -18,8 +18,7 @@
 #include <cstdint>
 #include <vector>
 
-using se_time_t = double;
-static const size_t kMaxMetadataSize(0xff);
+namespace se2 {
 
 enum class TimestampDomain {
   HARDWARE_CLOCK, /**< Frame timestamp was measured in relation to the camera clock */
@@ -61,8 +60,10 @@ struct TextureCoordinate {
 
 enum class FrameMetadataValue {
   None,
-  EmbededLine
+  EmbeddedLine
 };
+
+using se_time_t = double;
 
 struct FrameExtension {
   uint64_t index = 0;
@@ -73,5 +74,7 @@ struct FrameExtension {
   FrameMetadataValue metadata_value = FrameMetadataValue::None;
   std::vector<uint8_t> metadata_blob;
 };
+
+}  // namespace se2
 
 #endif //LIBSMARTEREYE2_CORE_TYPES_HPP
