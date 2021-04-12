@@ -81,7 +81,11 @@ class GeminiSerialPort {
   std::shared_ptr<serial::Serial> serial_;
   std::shared_ptr<Dispatcher> write_dispatcher_;
   std::thread recv_thread_;
+
   bool serial_running_;
+  bool is_head_found_ = false;
+  int pack_read_ = 0;
+  int pack_lack_ = 0;
 
   std::atomic<int64_t> speed_;
   std::map<SeExtension, std::shared_ptr<StreamProfileBase>> profiles_;

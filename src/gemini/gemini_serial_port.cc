@@ -41,6 +41,9 @@ void GeminiSerialPort::init() {
   watchdog_ = std::make_shared<Watchdog>([this]() {
     LOG(DEBUG) << "onDisconnected by Watchdog";
     serial_->flush();
+    is_head_found_ = false;
+    pack_read_ = 0;
+    pack_lack_ = 0;
     sensor_owner_->sendOpenCamCommand();
     std::this_thread::sleep_for(std::chrono::milliseconds(100)); // wait for device open
     offerHand();  // reconnect
@@ -240,9 +243,6 @@ void GeminiSerialPort::connect() {
     size_t nread = 0;
     std::string recv_buffer;
     TLVStruct tlv_head;
-    bool is_head_found = false;
-    int pack_read = 0;
-    int pack_lack = 0;
 
     auto check_head_valid_func = [](const TLVStruct &tlv_head) -> bool {
       bool invalid = (tlv_head.type < kMinValidTypeValue
@@ -253,14 +253,14 @@ void GeminiSerialPort::connect() {
 
     while (serial_running_) {
       try {
-        if (!is_head_found) {
+        if (!is_head_found_) {
           nread = serial_->read((uint8_t *) &tlv_head, sizeof(TLVStruct));
           if (nread != sizeof(TLVStruct)) {
             LOG(DEBUG) << "read TLV head timeout";
             retry();
             continue;
           } else if (check_head_valid_func(tlv_head)) {
-            is_head_found = true;
+            is_head_found_ = true;
           } else {
             continue;
           }
@@ -271,23 +271,23 @@ void GeminiSerialPort::connect() {
           recv_buffer.resize(tlv_head.length);
         }
 
-        if (pack_lack > 0) {
-          nread = serial_->read((uint8_t *) recv_buffer.data() + pack_read, pack_lack);
-          pack_read += nread;
-          pack_lack -= nread;
+        if (pack_lack_ > 0) {
+          nread = serial_->read((uint8_t *) recv_buffer.data() + pack_read_, pack_lack_);
+          pack_read_ += nread;
+          pack_lack_ -= nread;
         } else {
           nread = serial_->read((uint8_t *) recv_buffer.data(), tlv_head.length);
           if (nread < tlv_head.length) {
-            pack_read = nread;
-            pack_lack = tlv_head.length - nread;
+            pack_read_ = nread;
+            pack_lack_ = tlv_head.length - nread;
           }
         }
 
-        if (pack_lack > 0) continue;
+        if (pack_lack_ > 0) continue;
 
         // pack ready
-        pack_read = 0;
-        is_head_found = false;
+        pack_read_ = 0;
+        is_head_found_ = false;
         handleTlvData(tlv_head.type, (uint8_t *) recv_buffer.data(), tlv_head.length);
       } catch (serial::IOException &e) {
         LOG(WARNING) << "serial receive exception: " << e.what();
