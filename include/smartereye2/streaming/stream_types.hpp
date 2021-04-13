@@ -50,7 +50,8 @@ enum class FrameId : uint32_t {
   J2Perception = 1 << 21,
   SmallObstacle = 1 << 22,
   Flatness = 1 << 23,
-  VehicleInfo = 1 << 24
+  VehicleInfo = 1 << 24,
+  Matrix = 1 << 25
 };
 #ifdef FRAMEID_Q_ENUM
 Q_ENUM(Enumeration)

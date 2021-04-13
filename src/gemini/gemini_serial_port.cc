@@ -111,6 +111,12 @@ void GeminiSerialPort::init() {
   vehicle_info_profile->setUniqueId(Environment::instance().generateStreamId());
   vehicle_info_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
 
+  auto matrix_profile = std::make_shared<StreamProfileBase>();
+  matrix_profile->setFrameId(FrameId::Matrix);
+  matrix_profile->setFormat(FrameFormat::Custom);
+  matrix_profile->setUniqueId(Environment::instance().generateStreamId());
+  matrix_profile->tagProfile(ProfileTag::PROFILE_TAG_SUPERSET);
+
   profiles_[SeExtension::EXTENSION_OBSTACLE_FRAME] = obstacle_profile;
   profiles_[SeExtension::EXTENSION_LANE_FRAME] = lane_profile;
   profiles_[SeExtension::EXTENSION_FREESPACE_FRAME] = free_space_profile;
@@ -120,6 +126,7 @@ void GeminiSerialPort::init() {
   profiles_[SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME] = tfl_profile;
   profiles_[SeExtension::EXTENSION_FLATNESS_FRAME] = flat_profile;
   profiles_[SeExtension::EXTENSION_VEHICLE_INFO_FRAME] = vehicle_info_profile;
+  profiles_[SeExtension::EXTENSION_Matrix] = matrix_profile;
 }
 
 void GeminiSerialPort::open() {
@@ -527,6 +534,20 @@ void GeminiSerialPort::handleDataUnit(uint32_t type, const uint8_t *data, uint32
       }
     }
       break;
+    case SerialDataUnit_Matrix: {
+        FrameExtension frame_ext;
+        frame_ext.speed = speed_;
+        FrameHolder frame_holder(sensor_owner_->frame_source_->alloc_frame(SeExtension::EXTENSION_Matrix,
+                                                                           data_size, frame_ext, true));
+        if (frame_holder.frame) {
+          auto matrix_frame = reinterpret_cast<MatrixData *>(frame_holder.frame);
+          matrix_frame->setStreamProfile(profiles_[SeExtension::EXTENSION_Matrix]);
+          matrix_frame->setSensor(sensor_owner_->shared_from_this());
+          matrix_frame->loadData(data, data_size);
+          sensor_owner_->dispatch_threaded(std::move(frame_holder));
+        }
+    }
+    break;
     case SerialDataUnit_AlgorithmResult: {
       auto alg_res = (AlgorithmResult *) data;
 //      LOG(INFO) << "alg_res->dataType: " << alg_res->dataType;

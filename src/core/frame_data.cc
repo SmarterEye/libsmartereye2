@@ -99,6 +99,10 @@ std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
       return std::make_shared<FrameArchive<VehicleInfoFrameData>>(in_max_frame_queue_size,
                                                                ts,
                                                                parsers);
+    case SeExtension::EXTENSION_Matrix:
+      return std::make_shared<FrameArchive<MatrixData>>(in_max_frame_queue_size,
+                                                             ts,
+                                                             parsers);
 
     default:throw std::runtime_error("Requested frame type is not supported!");
   }
@@ -379,6 +383,17 @@ void FlatnessFrameData::loadData(const uint8_t *data, uint32_t data_size) {
 void VehicleInfoFrameData::loadData(const uint8_t *data, uint32_t data_size) {
   FrameData::loadData(data, data_size);
   vehicle_info_ = *(VehicleInfo *) data;
+}
+
+void MatrixData::loadData(const uint8_t *data, uint32_t data_size)
+{
+   FrameData::loadData(data, data_size);
+   auto *mat_data = (SEMatrix *) data;
+   setTimestamp(mat_data->timestamp);
+   num_ = mat_data->mat_num;
+   for (int i = 0; i < num_; i++) {
+     matrixs_.push_back(std::make_shared<SEMatrixData>(mat_data->data[i]));
+   }
 }
 
 }  // namespace libsmartereye2

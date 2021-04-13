@@ -55,7 +55,7 @@ typedef struct {
 }SEBox3D3f;
 
 /**
- * Data structure for one obstacle. 
+ * Data structure for one obstacle.
  */
 typedef struct {
 //
@@ -134,7 +134,7 @@ struct SEObstacles{
 };
 
 /**
- * Data structure for one lane line. 
+ * Data structure for one lane line.
  */
 typedef struct {
     int32_t id;
@@ -163,7 +163,7 @@ typedef struct {
 }SELane;
 
 /**
- * Data structure for one point of freespace. 
+ * Data structure for one point of freespace.
  */
 typedef struct {
     uint32_t pointType;
@@ -201,7 +201,7 @@ typedef struct {
 }SEFlatness;
 
 /**
- * Data structure for one traffic sign. 
+ * Data structure for one traffic sign.
  */
 typedef struct {
     int32_t id;
@@ -231,7 +231,7 @@ typedef struct  {
 }SETSR;
 
 /**
- * Data structure for one traffic light. 
+ * Data structure for one traffic light.
  */
 typedef struct {
     int32_t id;
@@ -263,10 +263,26 @@ typedef struct {
  * Data structure for J2 meta data
  */
 typedef struct {
-  uint64_t timestamp;
-  uint32_t data_size;
-  uint8_t data[0];
+    uint64_t timestamp;
+    uint32_t data_size;
+    uint8_t data[0];
 }SEMeta;
+
+typedef enum {
+    SEMatrix_Vcs2Gnd = 0,
+}SEMatrixType;
+
+typedef struct {
+    uint32_t type;
+    float matrixData[9];
+}SEMatrixData;
+
+typedef struct {
+    uint64_t timestamp;
+    uint32_t type;
+    uint32_t mat_num;
+    SEMatrixData data[0];
+}SEMatrix;
 
 struct ImageFreg
 {

@@ -282,6 +282,16 @@ class VehicleInfoFrameData : public FrameData {
   VehicleInfo vehicle_info_;
 };
 
+class MatrixData : public FrameData {
+ public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const std::vector<std::shared_ptr<SEMatrixData>> &matrixs() const { return matrixs_; }
+
+ private:
+  int num_ = 0;
+  std::vector<std::shared_ptr<SEMatrixData>> matrixs_;
+};
+
 }  // namespace libsmartereye2
 
 #endif //LIBSMARTEREYE2_FRAME_DATA_H
