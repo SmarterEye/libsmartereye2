@@ -31,7 +31,7 @@ struct SeNotificationsCallback {
 };
 
 struct SePlaybackChangedCallback {
-  virtual void onPlaybackStatusChanged(PlaybackStatus status) = 0;
+  virtual void onPlaybackStatusChanged(se2::PlaybackStatus status) = 0;
   virtual void release() = 0;
 };
 

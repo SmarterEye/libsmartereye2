@@ -34,12 +34,12 @@ struct RawUsbImageFrame {
   uint8_t image[0];
 };
 
-struct RawUsbImageFrame4Embededline {
-  uint8_t embededline[1280];
+struct RawUsbImageFrame4Embeddedline {
+  uint8_t embeddedline[1280];
   uint8_t image[0];
 };
 
-class GeminiSensor : public SensorBase, public VideoSensorInterface {
+class GeminiSensor : public SensorBase {
  public:
   explicit GeminiSensor(GeminiDevice *owner);
   ~GeminiSensor() override;
@@ -50,9 +50,6 @@ class GeminiSensor : public SensorBase, public VideoSensorInterface {
   void close() override;
   void start(FrameCallbackPtr callback) override;
   void stop() override;
-
-  // override from VideoSensorInterface
-  Intrinsics getIntrinsics() const override;
 
   void init();
   void dispose();
@@ -75,8 +72,6 @@ class GeminiSensor : public SensorBase, public VideoSensorInterface {
   std::vector<uint8_t> buffer_;
 
   // virtual COM
-  std::queue<uint32_t> j2counter_queue_;
-  std::map<uint32_t, int64_t> j2counter_to_timestamp_;
   std::shared_ptr<GeminiSerialPort> serial_port_;
 
   // threaded dispatch

@@ -14,6 +14,7 @@
 
 #ifndef LIBSMARTEREYE2_SENSOR_H
 #define LIBSMARTEREYE2_SENSOR_H
+#pragma warning (disable:4250)
 
 #include <memory>
 #include <utility>
@@ -46,6 +47,8 @@ class DeviceInterface;
 class StreamProfileInterface;
 
 using StreamProfiles = std::vector<std::shared_ptr<StreamProfileInterface>>;
+using se2::Intrinsics;
+using se2::Extrinsics;
 
 class SensorInterface : public virtual OptionsInterface, public virtual InfoInterface {
  public:
@@ -62,6 +65,8 @@ class SensorInterface : public virtual OptionsInterface, public virtual InfoInte
   virtual bool isStreaming() const = 0;
 
   virtual DeviceInterface &getDevice() = 0;
+  virtual Intrinsics getIntrinsics() const = 0;
+  virtual Extrinsics getExtrinsics() const = 0;
 };
 
 class SensorBase : public virtual SensorInterface, public virtual OptionsContainer, public virtual InfoContainer,
@@ -80,6 +85,8 @@ class SensorBase : public virtual SensorInterface, public virtual OptionsContain
   bool isStreaming() const override;
 
   DeviceInterface &getDevice() override;
+  Intrinsics getIntrinsics() const override { return intrinsics_; }
+  Extrinsics getExtrinsics() const override { return extrinsics_; }
 
   virtual bool isOpened() const { return is_opened_; }
 
@@ -93,15 +100,12 @@ class SensorBase : public virtual SensorInterface, public virtual OptionsContain
   std::shared_ptr<FrameSource> frame_source_;
   DevicePrivate *device_owner_;
   StreamProfiles profiles_;
+  Intrinsics intrinsics_;
+  Extrinsics extrinsics_;
 
  private:
   StreamProfiles active_profiles_;
   mutable std::mutex active_profiles_mutex_;
-};
-
-class VideoSensorInterface {
- public:
-  virtual Intrinsics getIntrinsics() const = 0; // request Intrinsics without params
 };
 
 }  // namespace libsmartereye2

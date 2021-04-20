@@ -14,7 +14,7 @@
 
 #ifndef LIBSMARTEREYE2_USB_TYPES_H
 #define LIBSMARTEREYE2_USB_TYPES_H
-
+#pragma warning (disable:4200)
 #include <cstdint>
 #include <string>
 #include <map>

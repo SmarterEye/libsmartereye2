@@ -93,9 +93,6 @@ StreamProfiles GeminiSensor::initStreamProfiles() {
     profile->setUniqueId(Environment::instance().generateStreamId());
     profile->setIntrinsics(getIntrinsics());
     int tags = ProfileTag::PROFILE_TAG_DEFAULT | ProfileTag::PROFILE_TAG_SUPERSET;
-//    if (static_cast<FrameId>(frame_info.frame_id) & kNecessaryFrameIds) {
-//      tags |= ProfileTag::PROFILE_TAG_CAPTURE;
-//    }
     profile->tagProfile(tags);
     results.push_back(profile);
 
@@ -121,7 +118,7 @@ void GeminiSensor::open(const StreamProfiles &requests) {
   frame_source_->init(metadata_parsers_);
   frame_source_->set_sensor(shared_from_this());
 
-  // filter frameid
+  // filter frame id
   StreamProfiles necessary_profiles = {};
   std::copy_if(requests.begin(),
                requests.end(),
@@ -219,11 +216,6 @@ void GeminiSensor::stop() {
   stopStream();
 }
 
-Intrinsics GeminiSensor::getIntrinsics() const {
-  // TODO
-  return {};
-}
-
 void GeminiSensor::init() {
   profiles_ = initStreamProfiles();
   device_owner_->tagProfiles(profiles_);
@@ -285,7 +277,7 @@ bool GeminiSensor::startStream() {
         auto index = pair.first;
         auto frame_info = usb_frame_group_.frame_infos[index];
         if (frame_info == nullptr) {
-          LOG(ERROR) << "active_frame_infos is not valide";
+          LOG(ERROR) << "active_frame_infos is not valid";
           break;
         }
         usb_frame_group_.frame_datas[index] = img_buf_ptr;
@@ -322,7 +314,7 @@ void GeminiSensor::handle_received_frames() {
       continue;
     }
 
-    bool with_embededline = (frame_id == FrameId::LeftCamera || frame_id == FrameId::RightCamera
+    bool with_embeddedline = (frame_id == FrameId::LeftCamera || frame_id == FrameId::RightCamera
         || frame_id == FrameId::CalibLeftCamera || frame_id == FrameId::CalibRightCamera);
 
     FrameExtension frame_ext;
@@ -337,35 +329,20 @@ void GeminiSensor::handle_received_frames() {
       video->setTimestampDomain(TimestampDomain::SYSTEM_TIME);
       video->setStreamProfile(profile);
       video->setSensor(shared_from_this());
-      if (with_embededline) {
-        auto raw_frame_with_embededline = reinterpret_cast<RawUsbImageFrame4Embededline *>(data_ptr);
-        auto embededline_size = sizeof(raw_frame_with_embededline->embededline);
+      if (with_embeddedline) {
+        auto raw_frame_with_embeddedline = reinterpret_cast<RawUsbImageFrame4Embeddedline *>(data_ptr);
+        auto embeddedline_size = sizeof(raw_frame_with_embeddedline->embeddedline);
 
-        // record j2 timestamp
-        if (frame_id == FrameId::LeftCamera) {
-          // get j2counter from embededline first 4 bytes
-          uint32_t j2counter = *reinterpret_cast<uint32_t *>(raw_frame_with_embededline->embededline);
-          j2counter_queue_.push(j2counter);
-          j2counter_to_timestamp_[j2counter] = timestamp;
-
-          if (j2counter_to_timestamp_.size() > 25) {
-            j2counter_to_timestamp_.erase(j2counter_queue_.front());
-            j2counter_queue_.pop();
-          }
-        }
-
-        video->extension().metadata_value = FrameMetadataValue::EmbededLine;
-        video->extension().metadata_blob.resize(embededline_size);
-        video->extension().metadata_blob.assign(raw_frame_with_embededline->embededline,
-                                                raw_frame_with_embededline->embededline + embededline_size);
+        video->extension().metadata_value = FrameMetadataValue::EmbeddedLine;
+        video->extension().metadata_blob.resize(embeddedline_size);
+        video->extension().metadata_blob.assign(raw_frame_with_embeddedline->embeddedline,
+                                                raw_frame_with_embeddedline->embeddedline + embeddedline_size);
 
         auto img_size = info->data_size - 1280;
-        video->data().resize(img_size, 0);
-        video->data().assign(raw_frame_with_embededline->image, raw_frame_with_embededline->image + img_size);
+        video->loadData(raw_frame_with_embeddedline->image, img_size);
       } else {
         auto raw_frame = reinterpret_cast<RawUsbImageFrame *>(data_ptr);
-        video->data().resize(info->data_size, 0);
-        video->data().assign(raw_frame->image, raw_frame->image + info->data_size);
+        video->loadData(raw_frame->image, info->data_size);
       }
     } else {
       LOG(WARNING) << "Dropped frame. alloc_frame(...) returned nullptr";
