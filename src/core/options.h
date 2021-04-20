@@ -27,11 +27,13 @@ class OptionsInterface;
 }
 
 struct SeOptions {
-  SeOptions(libsmartereye2::OptionsInterface *options) : options(options) {}
+  explicit SeOptions(libsmartereye2::OptionsInterface *options) : options(options) {}
   libsmartereye2::OptionsInterface *options;
 };
 
 namespace libsmartereye2 {
+
+using namespace se2;
 
 class Option : public noncopyable {
  public:

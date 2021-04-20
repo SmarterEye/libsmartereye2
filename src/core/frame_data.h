@@ -18,10 +18,9 @@
 #include "frame.h"
 #include "frame_archive.h"
 #include "core/core_types.hpp"
+#include "device/device_types.hpp"
 #include "se_util.hpp"
-
-struct OutputObstacles;
-struct FreespacePoint;
+#include "alg/packed_types.h"
 
 namespace libsmartereye2 {
 
@@ -39,6 +38,11 @@ class FrameData : public FrameInterface, public noncopyable {
   FrameData(FrameData &&other) noexcept;
 
   FrameData &operator=(FrameData &&other) noexcept;
+
+  virtual void loadData(const uint8_t *data, uint32_t data_size) {
+    data_.resize(data_size, 0);
+    data_.assign(data, data + data_size);
+  }
 
   std::shared_ptr<SensorInterface> getSensor() const override;
 
@@ -175,11 +179,6 @@ class DepthFrameData : public VideoFrameData {
 class DisparityData : public DepthFrameData {
  public:
   DisparityData() : DepthFrameData() {}
-
-  float stereoBaseline() const { return queryStereoBaseline(getSensor()); }
-
- private:
-  static float queryStereoBaseline(const std::shared_ptr<SensorInterface> &sensor);
 };
 
 class MotionFrameData : public FrameData {
@@ -205,41 +204,94 @@ class PoseData : public FrameData {
 
 class JourneyFrameData : public FrameData {
  public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const std::string &meta() const { return meta_buffer_; }
+
+ private:
+  std::string meta_buffer_;
 };
 
 class ObstacleFrameData : public FrameData {
  public:
-  void loadObstacles(const uint8_t *data, uint32_t data_size);
+  void loadData(const uint8_t *data, uint32_t data_size) override;
   int num() const { return num_; }
-  const std::vector<std::shared_ptr<OutputObstacles>> &obstacles() const { return obstacles_; }
+  const std::vector<std::shared_ptr<SEObstacle>> &obstacles() const { return obstacles_; }
 
  private:
   int num_ = 0;
-  std::vector<std::shared_ptr<OutputObstacles>> obstacles_;
+  std::vector<std::shared_ptr<SEObstacle>> obstacles_;
 };
 
 class FreeSpaceFrameData : public FrameData {
  public:
-  void loadFreeSpacePoints(const uint8_t *data, uint32_t data_size);
+  void loadData(const uint8_t *data, uint32_t data_size) override;
   int pointNum() const { return num_; }
-  const std::vector<std::shared_ptr<FreespacePoint>> &freeSpacePoints() const { return free_space_points_; }
+  const std::vector<std::shared_ptr<SEFreeSpacePoint>> &freeSpacePoints() const { return free_space_points_; }
 
  private:
   int num_ = 0;
-  std::vector<std::shared_ptr<FreespacePoint>> free_space_points_;
+  std::vector<std::shared_ptr<SEFreeSpacePoint>> free_space_points_;
 };
 
 class LaneFrameData : public FrameData {
  public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const std::vector<std::shared_ptr<SELaneLine>> &laneLines() const { return lane_lines_; }
+
+ private:
+  int num_ = 0;
+  std::vector<std::shared_ptr<SELaneLine>> lane_lines_;
 };
 
 class SmallObstacleFrameData : public FrameData {
  public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
 };
 
-class TrafficSignalFrameData : public FrameData {
+class TrafficSignFrameData : public FrameData {
  public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const std::vector<std::shared_ptr<SETSRData>> &signs() const { return signs_; }
+
+ private:
+  int num_ = 0;
+  std::vector<std::shared_ptr<SETSRData>> signs_;
 };
+
+class TrafficLightFrameData : public FrameData {
+ public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const std::vector<std::shared_ptr<SETFLData>> &lights() const { return lights_; }
+
+ private:
+  int num_ = 0;
+  std::vector<std::shared_ptr<SETFLData>> lights_;
+};
+
+class FlatnessFrameData : public FrameData {
+ public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+};
+
+class VehicleInfoFrameData : public FrameData {
+ public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const VehicleInfo &vehicleInfo() const { return vehicle_info_; }
+
+ private:
+  VehicleInfo vehicle_info_;
+};
+
+class MatrixData : public FrameData {
+ public:
+  void loadData(const uint8_t *data, uint32_t data_size) override;
+  const std::vector<std::shared_ptr<SEMatrixData>> &matrixs() const { return matrixs_; }
+
+ private:
+  int num_ = 0;
+  std::vector<std::shared_ptr<SEMatrixData>> matrixs_;
+};
+
 }  // namespace libsmartereye2
 
 #endif //LIBSMARTEREYE2_FRAME_DATA_H

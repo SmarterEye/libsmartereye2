@@ -16,10 +16,6 @@
 #include <opencv2/opencv.hpp>
 #include <utility>
 
-// algorithm output
-#include <smartereye2/alg/obstacleData.h>
-#include <smartereye2/alg/algorithmresult.h>
-
 //#define GET_SYNCED_FRAME
 
 using namespace se2;
@@ -45,15 +41,17 @@ void handleCurrentFrame(const se2::Frame &current_frame) {
       break;
     case FrameId::Disparity: {
       auto disparity = se2::VideoFrame(current_frame);  // 4
-      se2::VideoStreamProfile profile = static_cast<VideoStreamProfile>(disparity.getProfile());
-//      std::cout << "stereo calib focus: " << profile.getStereoCalibParams().focus << "..." << std::endl;
+//      se2::VideoStreamProfile profile = static_cast<VideoStreamProfile>(disparity.getProfile());
+//      std::cout << "Intrinsics: " << profile.getIntrinsics().lens_focus << " : " << profile.getIntrinsics().base_line << "..." << std::endl;
+//      std::cout << "Extrinsics: " << profile.getExtrinsics().translation.x << " : " << profile.getExtrinsics().translation.z << "..." << std::endl;
       cv::Mat disparity_mat(disparity.height(), disparity.width(), CV_16U, (void *) disparity.data());
       cv::normalize(disparity_mat, disparity_mat, 0, 255, cv::NORM_MINMAX, CV_8U);
       cv::imshow("disparity", disparity_mat);
     }
       break;
     case FrameId::J2Perception: {
-//      std::cout << "J2Perception: " << current_frame.dataSize() << std::endl;
+      auto j2_frame = se2::JourneyFrame(current_frame);
+//      std::cout << "J2Perception: " << j2_frame.timestamp() << " : " << j2_frame.meta().size() << std::endl;
     }
       break;
     case FrameId::Obstacle: {
@@ -70,6 +68,10 @@ void handleCurrentFrame(const se2::Frame &current_frame) {
 //      std::cout << "SmallObstacle: " << small_obs_frame.dataSize() << std::endl;
     }
       break;
+    case FrameId::VehicleInfo: {
+      auto vehicle_info_frame = se2::VehicleInfoFrame(current_frame);
+//      std::cout << "VehicleInfo: " << vehicle_info_frame.vehicleInfo().yaw_rate << " : " << vehicle_info_frame.vehicleInfo().ego_speed << std::endl;
+    }
     default:break;
   }
 }

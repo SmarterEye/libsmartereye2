@@ -21,6 +21,8 @@
 
 namespace libsmartereye2 {
 
+using namespace se2;
+
 class SensorInterface;
 class StreamProfileInterface;
 class ArchiveInterface;

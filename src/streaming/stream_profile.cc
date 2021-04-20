@@ -45,66 +45,62 @@ std::shared_ptr<StreamProfileInterface> MotionStreamProfilePrivate::clone() cons
 
 namespace se2 {
 
-StreamProfile::StreamProfile(SeStreamProfile *profile) : profile_(profile) {
-  if (profile_ != nullptr && profile_->profile != nullptr) {
-    auto stream = profile_->profile;
-
-    setIndex(stream->index());
-    setUniqueId(stream->uniqueId());
-    setFrameId(stream->frameId());
-    setFormat(stream->format());
-    setFrameRate(stream->fps());
-  }
+StreamProfile::StreamProfile(SeStreamProfile *profile) : profile_(nullptr) {
+  CHECK_PTR_NOT_NULL(profile)
+  CHECK_PTR_NOT_NULL(profile->profile)
+  profile_ = (profile->profile);
 }
 
-Extrinsics StreamProfile::getExtrinsicsTo(const StreamProfile &to) const {
-  return Extrinsics();
+int32_t StreamProfile::index() const {
+  return profile_->index();
 }
 
-void StreamProfile::registerExtrinsicsTo(const StreamProfile &to, Extrinsics extrinsics) {
+int32_t StreamProfile::uniqueId() const {
+  return profile_->uniqueId();
+}
 
+FrameId StreamProfile::frameId() const {
+  return profile_->frameId();
+}
+
+FrameFormat StreamProfile::format() const {
+  return profile_->format();
+}
+
+uint32_t StreamProfile::fps() const {
+  return profile_->fps();
+}
+
+Intrinsics StreamProfile::getIntrinsics() const {
+  return profile_->getIntrinsics();
+}
+
+Extrinsics StreamProfile::getExtrinsics() const {
+  return profile_->getExtrinsics();
 }
 
 VideoStreamProfile::VideoStreamProfile(const StreamProfile &sp)
     : StreamProfile(sp) {
-  if (profile_) {
-    auto vsp = dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_->profile);
-    width_ = vsp->width();
-    height_ = vsp->height();
-  }
+  auto vsp = dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_);
+  CHECK_PTR_NOT_NULL(vsp)
 }
 
-StreamProfile VideoStreamProfile::clone(FrameId frame_id, int32_t index, FrameFormat format,
-                                        int width, int height, const Intrinsics &intr) const {
-  auto sp = profile_->profile->clone();
-  sp->setFrameId(frame_id);
-  sp->setIndex(index);
-  sp->setFormat(format);
-
-  auto vsp = std::dynamic_pointer_cast<libsmartereye2::VideoStreamProfilePrivate>(sp);
-  vsp->setDims(width, height);
-  vsp->setIntrinsics(intr);
-
-  return StreamProfile(new SeStreamProfile{sp.get()});
+int VideoStreamProfile::width() const {
+  return dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_)->width();
 }
 
-StereoCalibrationParameters VideoStreamProfile::getStereoCalibParams() const {
-  auto vsp = dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_->profile);
-  return vsp->getStereoCalibParams();
-}
-
-Intrinsics VideoStreamProfile::getIntrinsics() const {
-  auto vsp = dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_->profile);
-  return vsp->getIntrinsics();
+int VideoStreamProfile::height() const {
+  return dynamic_cast<libsmartereye2::VideoStreamProfilePrivate *>(profile_)->height();
 }
 
 MotionStreamProfile::MotionStreamProfile(const StreamProfile &sp)
     : StreamProfile(sp) {
-
+  auto msp = dynamic_cast<libsmartereye2::MotionStreamProfilePrivate *>(profile_);
+  CHECK_PTR_NOT_NULL(msp)
 }
 
 MotionDeviceIntrinsics MotionStreamProfile::getMotionIntrinsics() const {
-  auto msp = dynamic_cast<libsmartereye2::MotionStreamProfilePrivate *>(profile_->profile);
+  auto msp = dynamic_cast<libsmartereye2::MotionStreamProfilePrivate *>(profile_);
   return msp->getMotionIntrinsics();
 }
 

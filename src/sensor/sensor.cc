@@ -53,7 +53,7 @@ std::string Sensor::getInfo(CameraInfo info) const {
 
 void Sensor::open(const StreamProfile &profile) const {
   std::vector<std::shared_ptr<libsmartereye2::StreamProfileInterface>> request;
-  auto profile_ptr = profile.profile_->profile->shared_from_this();
+  auto profile_ptr = profile.profile_->shared_from_this();
   request.push_back(std::dynamic_pointer_cast<libsmartereye2::StreamProfileInterface>(profile_ptr));
   sensor_->sensor->open(request);
 }
@@ -61,7 +61,7 @@ void Sensor::open(const StreamProfile &profile) const {
 void Sensor::open(const std::vector<StreamProfile> &profiles) const {
   std::vector<std::shared_ptr<libsmartereye2::StreamProfileInterface>> requests;
   for (const auto &current_profile : profiles) {
-    auto profile_ptr = current_profile.profile_->profile->shared_from_this();
+    auto profile_ptr = current_profile.profile_->shared_from_this();
     requests.push_back(std::dynamic_pointer_cast<libsmartereye2::StreamProfileInterface>(profile_ptr));
   }
   sensor_->sensor->open(requests);

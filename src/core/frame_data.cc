@@ -16,10 +16,6 @@
 #include "streaming/streaming.h"
 #include "streaming/stream_profile.h"
 
-#include "alg/algorithmresult.h"
-#include "alg/obstacleData.h"
-#include "alg/LdwDataInterface.h"
-
 namespace libsmartereye2 {
 
 std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
@@ -64,32 +60,49 @@ std::shared_ptr<ArchiveInterface> makeArchive(SeExtension extension_type,
 
     case SeExtension::EXTENSION_JOURNEY_FRAME:
       return std::make_shared<FrameArchive<JourneyFrameData>>(in_max_frame_queue_size,
-                                                           ts,
-                                                           parsers);
+                                                              ts,
+                                                              parsers);
 
     case SeExtension::EXTENSION_OBSTACLE_FRAME:
       return std::make_shared<FrameArchive<ObstacleFrameData>>(in_max_frame_queue_size,
-                                                              ts,
-                                                              parsers);
+                                                               ts,
+                                                               parsers);
 
     case SeExtension::EXTENSION_LANE_FRAME:
       return std::make_shared<FrameArchive<LaneFrameData>>(in_max_frame_queue_size,
-                                                              ts,
-                                                              parsers);
+                                                           ts,
+                                                           parsers);
 
     case SeExtension::EXTENSION_FREESPACE_FRAME:
       return std::make_shared<FrameArchive<FreeSpaceFrameData>>(in_max_frame_queue_size,
-                                                           ts,
-                                                           parsers);
+                                                                ts,
+                                                                parsers);
 
     case SeExtension::EXTENSION_SMALL_OBS_FRAME:
       return std::make_shared<FrameArchive<SmallObstacleFrameData>>(in_max_frame_queue_size,
-                                                           ts,
-                                                           parsers);
-    case SeExtension::EXTENSION_TRAFFIC_SIGNAL_FRAME:
-        return std::make_shared<FrameArchive<TrafficSignalFrameData>>(in_max_frame_queue_size,
-                                                         ts,
-                                                         parsers);
+                                                                    ts,
+                                                                    parsers);
+    case SeExtension::EXTENSION_TRAFFIC_SIGN_FRAME:
+      return std::make_shared<FrameArchive<TrafficSignFrameData>>(in_max_frame_queue_size,
+                                                                  ts,
+                                                                  parsers);
+    case SeExtension::EXTENSION_TRAFFIC_LIGHT_FRAME:
+      return std::make_shared<FrameArchive<TrafficLightFrameData>>(in_max_frame_queue_size,
+                                                                   ts,
+                                                                   parsers);
+    case SeExtension::EXTENSION_FLATNESS_FRAME:
+      return std::make_shared<FrameArchive<FlatnessFrameData>>(in_max_frame_queue_size,
+                                                               ts,
+                                                               parsers);
+
+    case SeExtension::EXTENSION_VEHICLE_INFO_FRAME:
+      return std::make_shared<FrameArchive<VehicleInfoFrameData>>(in_max_frame_queue_size,
+                                                               ts,
+                                                               parsers);
+    case SeExtension::EXTENSION_Matrix:
+      return std::make_shared<FrameArchive<MatrixData>>(in_max_frame_queue_size,
+                                                             ts,
+                                                             parsers);
 
     default:throw std::runtime_error("Requested frame type is not supported!");
   }
@@ -131,7 +144,7 @@ void FrameData::setSensor(std::shared_ptr<SensorInterface> sensor) {
   sensor_ = sensor;
 }
 
-const char* FrameData::getFrameMetadata(const FrameMetadataValue &frame_metadata) const {
+const char *FrameData::getFrameMetadata(const FrameMetadataValue &frame_metadata) const {
   return reinterpret_cast<const char *>(extension_data_.metadata_blob.data());
 }
 
@@ -270,34 +283,6 @@ float DepthFrameData::queryUnits(const std::shared_ptr<SensorInterface> &sensor)
   return 0.f; // TODO
 }
 
-float DisparityData::queryStereoBaseline(const std::shared_ptr<SensorInterface> &sensor) {
-  if (sensor != nullptr) {
-    try {
-//      auto stereo_sensor = As<librealsense::depth_stereo_sensor>(sensor);
-//      if (stereo_sensor != nullptr) {
-//        return stereo_sensor->get_stereo_baseline_mm();
-//      } else {
-//        //For playback sensors
-//        auto extendable = As<librealsense::extendable_interface>(sensor);
-//        if (extendable && extendable->extend_to(TypeToExtension<librealsense::depth_stereo_sensor>::value,
-//                                                (void **) (&stereo_sensor))) {
-//          return stereo_sensor->get_stereo_baseline_mm();
-//        }
-//      }
-    }
-    catch (const std::exception &e) {
-      LOG(ERROR) << "Failed to query stereo baseline from sensor. " << e.what();
-    }
-    catch (...) {
-      LOG(ERROR) << "Failed to query stereo baseline from sensor";
-    }
-  } else {
-    LOG(WARNING) << "sensor was nullptr";
-  }
-
-  return 0;
-}
-
 const Vertex *PointsData::vertex() const {
   getFrameData();
   const char *data = data_.data();
@@ -319,22 +304,96 @@ void PointsData::exportToPly(const std::string &fname, const FrameHolder &textur
 
 }
 
-void ObstacleFrameData::loadObstacles(const uint8_t *data, uint32_t data_size) {
-  int *num_ptr = (int *) data;
-  auto *obs_ptr = (OutputObstacles *) (num_ptr + 2);
-  num_ = *num_ptr;
+void JourneyFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+
+  auto *meta = (SEMeta *) data;
+  setTimestamp(meta->timestamp);
+  if (meta_buffer_.size() < meta->data_size) {
+    meta_buffer_.resize(meta->data_size);
+  }
+  meta_buffer_.assign(meta->data, meta->data + meta->data_size);
+}
+
+void ObstacleFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+
+  auto obs_data = (SEObstacles *) data;
+  setTimestamp(obs_data->timestamp);
+  num_ = obs_data->obs_num;
   for (int i = 0; i < num_; i++) {
-    obstacles_.push_back(std::make_shared<OutputObstacles>(obs_ptr[i]));
+    obstacles_.push_back(std::make_shared<SEObstacle>(obs_data->obstacles[i]));
   }
 }
 
-void FreeSpaceFrameData::loadFreeSpacePoints(const uint8_t *data, uint32_t data_size) {
-  int *num_ptr = (int *) data;
-  auto *free_space_ptr = (FreespacePoint *) (num_ptr + 1);
-  num_ = *num_ptr;
+void FreeSpaceFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+
+  auto *fs_data = (SEFreeSpace *) data;
+  setTimestamp(fs_data->timestamp);
+  num_ = fs_data->point_num;
   for (int i = 0; i < num_; i++) {
-    free_space_points_.push_back(std::make_shared<FreespacePoint>(free_space_ptr[i]));
+    free_space_points_.push_back(std::make_shared<SEFreeSpacePoint>(fs_data->points[i]));
   }
+}
+
+void LaneFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+
+  auto *lane_data = (SELane *) data;
+  setTimestamp(lane_data->timestamp);
+  num_ = lane_data->line_num;
+  for (int i = 0; i < num_; i++) {
+    lane_lines_.push_back(std::make_shared<SELaneLine>(lane_data->lines[i]));
+  }
+}
+
+void SmallObstacleFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+  // TODO
+}
+
+void TrafficSignFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+
+  auto *tsr_data = (SETSR *) data;
+  setTimestamp(tsr_data->timestamp);
+  num_ = tsr_data->sign_num;
+  for (int i = 0; i < num_; i++) {
+    signs_.push_back(std::make_shared<SETSRData>(tsr_data->signs[i]));
+  }
+}
+
+void TrafficLightFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+
+  auto *tfl_data = (SETFL *) data;
+  setTimestamp(tfl_data->timestamp);
+  num_ = tfl_data->light_num;
+  for (int i = 0; i < num_; i++) {
+    lights_.push_back(std::make_shared<SETFLData>(tfl_data->lights[i]));
+  }
+}
+
+void FlatnessFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+  // TODO
+}
+
+void VehicleInfoFrameData::loadData(const uint8_t *data, uint32_t data_size) {
+  FrameData::loadData(data, data_size);
+  vehicle_info_ = *(VehicleInfo *) data;
+}
+
+void MatrixData::loadData(const uint8_t *data, uint32_t data_size)
+{
+   FrameData::loadData(data, data_size);
+   auto *mat_data = (SEMatrix *) data;
+   setTimestamp(mat_data->timestamp);
+   num_ = mat_data->mat_num;
+   for (int i = 0; i < num_; i++) {
+     matrixs_.push_back(std::make_shared<SEMatrixData>(mat_data->data[i]));
+   }
 }
 
 }  // namespace libsmartereye2
