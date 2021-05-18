@@ -148,7 +148,7 @@ void GeminiSerialPort::open() {
       pid = std::stoi(pid_str, nullptr, 16);
     }
     if (vid == gemini_device->usb_info_.vid && pid == gemini_device->usb_info_.pid) {
-      serial_ = std::make_shared<serial::Serial>(port_entry.port, 128000, serial::Timeout::simpleTimeout(1000));
+      serial_ = std::make_shared<serial::Serial>(port_entry.port, 128000, serial::Timeout::simpleTimeout(2048));
       std::cout << "Is the serial port open?";
       if (serial_->isOpen())
         std::cout << " Yes." << std::endl;
