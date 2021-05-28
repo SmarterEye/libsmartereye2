@@ -353,6 +353,10 @@ void GeminiSerialPort::onConnected() {
   watchdog_->start();
 
   // when connected, request intrinsics and extrinsics first...
+  using namespace std::chrono;
+  auto time_now = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+  int64_t timestamp = time_now.count();
+  send(SerialCommand_SyncTimestamp, (const char*)&timestamp, sizeof (timestamp));
   send(SerialCommand_RequireIntrinsics);
   send(SerialCommand_RequireExtrinsics);
   std::this_thread::sleep_for(std::chrono::microseconds(40));

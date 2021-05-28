@@ -43,7 +43,8 @@ enum SerialCommand {
   SerialCommand_RequireIntrinsics,
   SerialCommand_RespondIntrinsics,
   SerialCommand_RequireExtrinsics,
-  SerialCommand_RespondExtrinsics
+  SerialCommand_RespondExtrinsics,
+  SerialCommand_SyncTimestamp
 };
 
 enum SerialDataUnit {
